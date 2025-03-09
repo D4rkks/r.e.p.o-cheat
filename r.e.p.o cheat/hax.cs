@@ -163,7 +163,8 @@ namespace r.e.p.o_cheat
         private const float itemListUpdateInterval = 2f; 
         public void Start()
         {
-            Cursor.visible = showMenu;
+            UpdateCursorState();
+
             DebugCheats.texture2 = new Texture2D(2, 2, TextureFormat.ARGB32, false);
             DebugCheats.texture2.SetPixels(new[] { Color.red, Color.red, Color.red, Color.red });
             DebugCheats.texture2.Apply();
@@ -171,31 +172,33 @@ namespace r.e.p.o_cheat
             var playerHealthType = Type.GetType("PlayerHealth, Assembly-CSharp");
             if (playerHealthType != null)
             {
-                Log1("playerHealthType não é null");
+                Log1("playerHealthType is not null");
                 Health_Player.playerHealthInstance = FindObjectOfType(playerHealthType);
-                Log1(Health_Player.playerHealthInstance != null ? "playerHealthInstance não é null" : "playerHealthInstance null");
+                Log1(Health_Player.playerHealthInstance != null ? "playerHealthInstance is not null" : "playerHealthInstance is null");
             }
-            else Log1("playerHealthType null");
+            else
+                Log1("playerHealthType is null");
 
             var playerMaxHealth = Type.GetType("ItemUpgradePlayerHealth, Assembly-CSharp");
             if (playerMaxHealth != null)
             {
                 Health_Player.playerMaxHealthInstance = FindObjectOfType(playerMaxHealth);
-                Log1("playerMaxHealth não é null");
+                Log1("playerMaxHealth is not null");
             }
-            else Log1("playerMaxHealth null");
+            else
+                Log1("playerMaxHealth is null");
         }
-
+        
         public void Update()
         {
             if (Time.time >= nextUpdateTime)
             {
                 DebugCheats.UpdateEnemyList();
-                Log1("Lista de inimigos atualizada!");
+                Log1("Enemy list updated!");
                 nextUpdateTime = Time.time + updateInterval;
             }
             if (Time.time - lastItemListUpdateTime > itemListUpdateInterval)
-            { 
+            {
                 UpdateItemList();
                 itemList = ItemTeleport.GetItemList();
                 lastItemListUpdateTime = Time.time;
@@ -212,23 +215,96 @@ namespace r.e.p.o_cheat
                 oldSliderValueStrength = sliderValueStrength;
             }
 
-            if (playerColor.isRandomizing) playerColor.colorRandomizer();
+            if (playerColor.isRandomizing)
+                playerColor.colorRandomizer();
 
             if (Input.GetKeyDown(KeyCode.Delete))
             {
                 showMenu = !showMenu;
-                Cursor.visible = showMenu;
-                Cursor.lockState = showMenu ? CursorLockMode.None : CursorLockMode.Locked;
+                Debug.Log("MENU " + showMenu);
+                if (!showMenu)
+                {
+                    TryUnlockCamera();
+                }
+                UpdateCursorState();
             }
             if (Input.GetKeyDown(KeyCode.F5)) Start();
-            if (Input.GetKeyDown(KeyCode.F10)) Loader.UnloadCheat();
+            if (Input.GetKeyDown(KeyCode.F10))
+            {
+                showMenu = false;
+                TryUnlockCamera();
+                UpdateCursorState();
+                Loader.UnloadCheat();
+            }
             if (Input.GetKeyDown(KeyCode.F12)) showDebugMenu = !showDebugMenu;
 
             for (int i = debugLogMessages.Count - 1; i >= 0; i--)
             {
-                if (Time.time - debugLogMessages[i].timestamp > 3f) debugLogMessages.RemoveAt(i);
+                if (Time.time - debugLogMessages[i].timestamp > 3f)
+                    debugLogMessages.RemoveAt(i);
+            }
+
+            if (showMenu)
+            {
+                TryLockCamera();
             }
         }
+
+        private void TryLockCamera()
+        {
+            if (InputManager.instance != null)
+            {
+                Type type = typeof(InputManager);
+                FieldInfo field = type.GetField("disableAimingTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field != null)
+                {
+                    float currentValue = (float)field.GetValue(InputManager.instance);
+                    if (currentValue < 2f || currentValue > 10f)
+                    {
+                        float clampedValue = Mathf.Clamp(currentValue, 2f, 10f);
+                        field.SetValue(InputManager.instance, clampedValue);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Failed to find field disableAimingTimer.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("InputManager.instance not found!");
+            }
+        }
+
+        private void TryUnlockCamera()
+        {
+            if (InputManager.instance != null)
+            {
+                Type type = typeof(InputManager);
+                FieldInfo field = type.GetField("disableAimingTimer", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field != null)
+                {
+                    float currentValue = (float)field.GetValue(InputManager.instance);
+                    field.SetValue(InputManager.instance, 0f);
+                    Debug.Log("disableAimingTimer reset to 0 (menu closed).");
+                }
+                else
+                {
+                    Debug.LogError("Failed to find field disableAimingTimer.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("InputManager.instance not found!");
+            }
+        }
+
+        private void UpdateCursorState()
+        {
+            Cursor.visible = showMenu;
+            Cursor.lockState = showMenu ? CursorLockMode.None : CursorLockMode.Locked;
+        }
+        
         private void UpdateItemList()
         {
             DebugCheats.valuableObjects.Clear();
