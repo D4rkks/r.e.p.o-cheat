@@ -190,7 +190,7 @@ namespace r.e.p.o_cheat
         private bool initialized = false;
         private static Dictionary<Color, Texture2D> solidTextures = new Dictionary<Color, Texture2D>();
 
-        private enum MenuCategory { Player, ESP, Combat, Misc, Enemies, Items }
+        private enum MenuCategory { Player, ESP, Combat, Misc, Enemies, Items, Hotkeys }
         private MenuCategory currentCategory = MenuCategory.Player;
 
         public static float staminaRechargeDelay = 1f;
@@ -218,7 +218,6 @@ namespace r.e.p.o_cheat
         public static float OldthrowStrength = 1f;
         public static float OldslideDecay = 1f;
 
-
         private List<ItemTeleport.GameItem> itemList = new List<ItemTeleport.GameItem>();
         private int selectedItemIndex = 0;
         private Vector2 itemScrollPosition = Vector2.zero;
@@ -229,6 +228,30 @@ namespace r.e.p.o_cheat
         private float menuX = 50f;
         private float menuY = 50f;
         private const float titleBarHeight = 30f;
+
+        private Dictionary<KeyCode, Action> hotkeyBindings = new Dictionary<KeyCode, Action>();
+        private List<HotkeyAction> availableActions = new List<HotkeyAction>();
+        private int selectedHotkeySlot = 0;
+        private bool configuringHotkey = false;
+        private KeyCode[] defaultHotkeys = new KeyCode[12];
+        private KeyCode pendingHotkey = KeyCode.None;
+        private Vector2 actionSelectorScroll = Vector2.zero;
+        private bool showingActionSelector = false;
+        private int currentHotkeySlot = -1;
+        private KeyCode currentHotkeyKey = KeyCode.None;
+        private HashSet<KeyCode> reservedKeys = new HashSet<KeyCode> {
+        KeyCode.Delete,
+        KeyCode.F5,
+        KeyCode.F10,
+        KeyCode.F12 
+    };
+
+        private float actionSelectorX = 300f;
+        private float actionSelectorY = 200f;
+        private bool isDraggingActionSelector = false;
+        private Vector2 dragOffsetActionSelector;
+        private GUIStyle overlayDimStyle;
+        private GUIStyle actionSelectorBoxStyle;
 
         private static bool cursorStateInitialized = false;
 
@@ -243,8 +266,20 @@ namespace r.e.p.o_cheat
                 border = new RectOffset(5, 5, 5, 5)
             };
 
+            overlayDimStyle = new GUIStyle();
+            overlayDimStyle.normal.background = MakeSolidBackground(new Color(0f, 0f, 0f, 0.5f), 0.5f);
+
+            actionSelectorBoxStyle = new GUIStyle(GUI.skin.box)
+            {
+                normal = { background = MakeSolidBackground(new Color(0.25f, 0.25f, 0.25f), 0.95f) },
+                fontSize = 14,
+                alignment = TextAnchor.MiddleCenter,
+                padding = new RectOffset(10, 10, 10, 10)
+            };
+
             UIHelper.InitSliderStyles();
             UpdateCursorState();
+            InitializeHotkeyActions();
 
             DebugCheats.texture2 = new Texture2D(2, 2, TextureFormat.ARGB32, false);
             DebugCheats.texture2.SetPixels(new[] { Color.red, Color.red, Color.red, Color.red });
@@ -316,10 +351,7 @@ namespace r.e.p.o_cheat
             {
                 showMenu = !showMenu;
                 Debug.Log("MENU " + showMenu);
-                if (!showMenu)
-                {
-                    TryUnlockCamera();
-                }
+                if (!showMenu) TryUnlockCamera();
                 UpdateCursorState();
             }
 
@@ -341,11 +373,53 @@ namespace r.e.p.o_cheat
             // Remove outdated logs efficiently
             debugLogMessages.RemoveAll(msg => Time.time - msg.timestamp > 3f);
 
-            if (showMenu)
+            if (configuringHotkey)
             {
-                TryLockCamera();
+                foreach (KeyCode key in Enum.GetValues(typeof(KeyCode)))
+                {
+                    if (Input.GetKeyDown(key) && key != KeyCode.Escape)
+                    {
+                        if (reservedKeys.Contains(key))
+                        {
+                            // key is reserved, show warning in the debug log as users already have a red forewarning in GUI
+                            Log1($"Cannot assign {key} as hotkey - it's reserved for cheat operation!");
+                            configuringHotkey = false;
+                            pendingHotkey = KeyCode.None;
+                        }
+                        else
+                        {
+                            pendingHotkey = key;
+                            configuringHotkey = false;
+                            Log1("hotkey set to: " + pendingHotkey);
+                        }
+                        break;
+                    }
+                    else if (Input.GetKeyDown(KeyCode.Escape))
+                    {
+                        configuringHotkey = false;
+                        pendingHotkey = KeyCode.None;
+                        Log1("hotkey configuration canceled");
+                        break;
+                    }
+                }
             }
+            else
+            {
+                foreach (var kvp in hotkeyBindings)
+                {
+                    if (Input.GetKeyDown(kvp.Key) && kvp.Value != null)
+                    {
+                        kvp.Value.Invoke();
+                        break;
+                    }
+                }
+            }
+
+            debugLogMessages.RemoveAll(msg => Time.time - msg.timestamp > 3f);
+
+            if (showMenu) TryLockCamera();
         }
+
         private void TryLockCamera()
         {
             if (InputManager.instance != null)
@@ -361,16 +435,11 @@ namespace r.e.p.o_cheat
                         field.SetValue(InputManager.instance, clampedValue);
                     }
                 }
-                else
-                {
-                    Debug.LogError("Failed to find field disableAimingTimer.");
-                }
+                else Debug.LogError("Failed to find field disableAimingTimer.");
             }
-            else
-            {
-                Debug.LogWarning("InputManager.instance not found!");
-            }
+            else Debug.LogWarning("InputManager.instance not found!");
         }
+
         private void TryUnlockCamera()
         {
             if (InputManager.instance != null)
@@ -383,15 +452,9 @@ namespace r.e.p.o_cheat
                     field.SetValue(InputManager.instance, 0f);
                     Debug.Log("disableAimingTimer reset to 0 (menu closed).");
                 }
-                else
-                {
-                    Debug.LogError("Failed to find field disableAimingTimer.");
-                }
+                else Debug.LogError("Failed to find field disableAimingTimer.");
             }
-            else
-            {
-                Debug.LogWarning("InputManager.instance not found!");
-            }
+            else Debug.LogWarning("InputManager.instance not found!");
         }
 
         private void UpdateCursorState()
@@ -448,6 +511,7 @@ namespace r.e.p.o_cheat
 
             if (enemyNames.Count == 0) enemyNames.Add("No enemies found");
         }
+
         private void TeleportEnemyToMe()
         {
             if (selectedEnemyIndex < 0 || selectedEnemyIndex >= enemyList.Count)
@@ -519,16 +583,10 @@ namespace r.e.p.o_cheat
                     }
                 }
 
-                if (navMeshAgent != null)
-                {
-                    StartCoroutine(ReEnableNavMeshAgent(navMeshAgent, 2f));
-                }
+                if (navMeshAgent != null) StartCoroutine(ReEnableNavMeshAgent(navMeshAgent, 2f));
 
                 var enemyGameObject = selectedEnemy.GetComponent<GameObject>();
-                if (enemyGameObject == null)
-                {
-                    enemyGameObject = ((MonoBehaviour)selectedEnemy).gameObject;
-                }
+                if (enemyGameObject == null) enemyGameObject = ((MonoBehaviour)selectedEnemy).gameObject;
                 if (enemyGameObject != null)
                 {
                     enemyGameObject.SetActive(false);
@@ -548,6 +606,7 @@ namespace r.e.p.o_cheat
                 Log1($"Erro ao teleportar inimigo {enemyNames[selectedEnemyIndex]}: {e.Message}");
             }
         }
+
         private System.Collections.IEnumerator ReEnableNavMeshAgent(object navMeshAgent, float delay)
         {
             yield return new WaitForSeconds(delay);
@@ -558,6 +617,7 @@ namespace r.e.p.o_cheat
                 Log1("NavMeshAgent reativado após teleporte.");
             }
         }
+
         private void KillSelectedEnemy()
         {
             if (selectedEnemyIndex < 0 || selectedEnemyIndex >= enemyList.Count)
@@ -588,13 +648,13 @@ namespace r.e.p.o_cheat
                             hurtMethod.Invoke(healthComponent, new object[] { 9999, Vector3.zero });
                             Log1($"Inimigo {enemyNames[selectedEnemyIndex]} ferido com 9999 de dano via Hurt");
                         }
-                        else
+                        else 
                             Log1("Método 'Hurt' não encontrado em EnemyHealth");
                     }
-                    else
+                    else 
                         Log1("Componente EnemyHealth é nulo");
                 }
-                else
+                else 
                     Log1("Campo 'Health' não encontrado em Enemy");
 
                 UpdateEnemyList();
@@ -602,6 +662,154 @@ namespace r.e.p.o_cheat
             catch (Exception e)
             {
                 Log1($"Erro ao matar inimigo {enemyNames[selectedEnemyIndex]}: {e.Message}");
+            }
+        }
+
+        private void ActionSelectorWindow(int windowID)
+        {
+            if (GUI.Button(new Rect(370, 5, 20, 20), "X"))
+            {
+                showingActionSelector = false;
+            }
+
+            GUI.DragWindow(new Rect(0, 0, 400, 30));
+
+            Rect scrollViewRect = new Rect(10, 35, 380, 355);
+            Rect contentRect = new Rect(0, 0, 360, availableActions.Count * 35);
+            actionSelectorScroll = GUI.BeginScrollView(scrollViewRect, actionSelectorScroll, contentRect);
+
+            for (int i = 0; i < availableActions.Count; i++)
+            {
+                Rect actionRect = new Rect(0, i * 35, 340, 30);
+                if (GUI.Button(actionRect, availableActions[i].Name))
+                {
+                    hotkeyBindings[currentHotkeyKey] = availableActions[i].Action;
+                    Log1("assigned " + availableActions[i].Name + " to " + currentHotkeyKey);
+                    showingActionSelector = false;
+                }
+
+                if (actionRect.Contains(Event.current.mousePosition))
+                {
+                    Rect tooltipRect = new Rect(Event.current.mousePosition.x + 15, Event.current.mousePosition.y, 200, 30);
+                    GUI.Label(tooltipRect, availableActions[i].Description);
+                }
+            }
+
+            GUI.EndScrollView();
+        }
+
+
+        private class HotkeyAction
+        {
+            public string Name { get; set; }
+            public Action Action { get; set; }
+            public string Description { get; set; }
+            public HotkeyAction(string name, Action action, string description = "")
+            {
+                Name = name;
+                Action = action;
+                Description = description;
+            }
+        }
+
+        private void ShowActionSelector(int slotIndex, KeyCode key)
+        {
+            showingActionSelector = true;
+            currentHotkeySlot = slotIndex;
+            currentHotkeyKey = key;
+        }
+
+        private void InitializeHotkeyActions()
+        {
+            availableActions.Add(new HotkeyAction("God Mode", () => {
+                bool newGodModeState = !godModeActive;
+                PlayerController.GodMode();
+                godModeActive = newGodModeState;
+                Log1("god mode toggled: " + godModeActive);
+            }, "toggles god mode on/off"));
+
+            availableActions.Add(new HotkeyAction("Infinite Health", () => {
+                bool newHealState = !infiniteHealthActive;
+                infiniteHealthActive = newHealState;
+                Health_Player.MaxHealth();
+                Log1("infinite health toggled: " + infiniteHealthActive);
+            }, "toggles infinite health on/off"));
+
+            availableActions.Add(new HotkeyAction("Infinite Stamina", () => {
+                bool newStaminaState = !stamineState;
+                stamineState = newStaminaState;
+                PlayerController.MaxStamina();
+                Log1("infinite stamina toggled: " + stamineState);
+            }, "toggles infinite stamina on/off"));
+
+            availableActions.Add(new HotkeyAction("RGB Player", () => {
+                playerColor.isRandomizing = !playerColor.isRandomizing;
+                Log1("rgb player toggled: " + playerColor.isRandomizing);
+            }, "toggles rgb player effect"));
+
+            availableActions.Add(new HotkeyAction("Spawn Money", () => {
+                GameObject localPlayer = DebugCheats.GetLocalPlayer();
+                if (localPlayer != null)
+                {
+                    Vector3 targetPosition = localPlayer.transform.position + Vector3.up * 1.5f;
+                    transform.position = targetPosition;
+                    ItemSpawner.SpawnItem(targetPosition);
+                    Log1("money spawned.");
+                }
+                else
+                {
+                    Log1("local player not found!");
+                }
+            }, "spawns money at your position"));
+
+            availableActions.Add(new HotkeyAction("Kill All Enemies", () => {
+                DebugCheats.KillAllEnemies();
+                Log1("all enemies killed.");
+            }, "kills all enemies on the map"));
+
+            availableActions.Add(new HotkeyAction("Enemy ESP Toggle", () => {
+                DebugCheats.drawEspBool = !DebugCheats.drawEspBool;
+                Log1("enemy esp toggled: " + DebugCheats.drawEspBool);
+            }, "toggles enemy esp on/off"));
+
+            availableActions.Add(new HotkeyAction("Item ESP Toggle", () => {
+                DebugCheats.drawItemEspBool = !DebugCheats.drawItemEspBool;
+                Log1("item esp toggled: " + DebugCheats.drawItemEspBool);
+            }, "toggles item esp on/off"));
+
+            availableActions.Add(new HotkeyAction("Player ESP Toggle", () => {
+                DebugCheats.drawPlayerEspBool = !DebugCheats.drawPlayerEspBool;
+                Log1("player esp toggled: " + DebugCheats.drawPlayerEspBool);
+            }, "toggles player esp on/off"));
+
+            availableActions.Add(new HotkeyAction("Heal Self", () => {
+                GameObject localPlayer = DebugCheats.GetLocalPlayer();
+                if (localPlayer != null)
+                {
+                    Health_Player.HealPlayer(localPlayer, 100, "Self");
+                    Log1("healed self by 100 hp.");
+                }
+                else
+                {
+                    Log1("local player not found!");
+                }
+            }, "heals yourself by 100 hp"));
+
+            availableActions.Add(new HotkeyAction("Max Speed", () => {
+                sliderValue = 30f;
+                PlayerController.RemoveSpeed(sliderValue);
+                Log1("speed set to maximum (30)");
+            }, "sets speed to maximum value"));
+
+            availableActions.Add(new HotkeyAction("Normal Speed", () => {
+                sliderValue = 5f;
+                PlayerController.RemoveSpeed(sliderValue);
+                Log1("speed set to normal (5)");
+            }, "sets speed to normal value"));
+
+            for (int i = 0; i < defaultHotkeys.Length; i++)
+            {
+                defaultHotkeys[i] = KeyCode.None;
             }
         }
 
@@ -720,20 +928,11 @@ namespace r.e.p.o_cheat
                             reviveMethod.Invoke(playerDeathHeadInstance, null);
                             Log1("Método 'Revive' chamado com sucesso para: " + playerNames[selectedPlayerIndex]);
                         }
-                        else
-                        {
-                            Log1("Método 'Revive' não encontrado!");
-                        }
+                        else Log1("Método 'Revive' não encontrado!");
                     }
-                    else
-                    {
-                        Log1("Instância de playerDeathHead não encontrada.");
-                    }
+                    else Log1("Instância de playerDeathHead não encontrada.");
                 }
-                else
-                {
-                    Log1("Campo 'playerDeathHead' não encontrado.");
-                }
+                else Log1("Campo 'playerDeathHead' não encontrado.");
 
                 var playerHealthField = selectedPlayer.GetType().GetField("playerHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (playerHealthField != null)
@@ -755,22 +954,16 @@ namespace r.e.p.o_cheat
                         }
                         else
                         {
-                            Log1("Campo 'health' não encontrado, tentando HealPlayer como fallback.");
+                            Log1("Campo 'health' não encontrado, tentando HealPlayer.");
                             Health_Player.HealPlayer(selectedPlayer, maxHealth, playerNames[selectedPlayerIndex]);
                         }
 
                         int currentHealth = healthField != null ? (int)healthField.GetValue(playerHealthInstance) : -1;
                         Log1($"Saúde atual após revive: {currentHealth}");
-                    }
-                    else
-                    {
-                        Log1("Instância de playerHealth é nula, não foi possível restaurar saúde.");
-                    }
                 }
-                else
-                {
-                    Log1("Campo 'playerHealth' não encontrado, cura não realizada.");
+                    else Log1("Instância de playerHealth é nula, não foi possível restaurar saúde.");
                 }
+                Log1("Campo 'health' não encontrado, tentando HealPlayer como fallback.");
             }
             catch (Exception e)
             {
@@ -799,6 +992,7 @@ namespace r.e.p.o_cheat
                 if (deathMethod == null) { Log1("Método 'Death' não encontrado!"); return; }
                 deathMethod.Invoke(playerHealthInstance, null);
                 Log1($"Método 'Death' chamado localmente para {playerNames[selectedPlayerIndex]}.");
+
                 var playerAvatarField = healthType.GetField("playerAvatar", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (playerAvatarField != null)
                 {
@@ -813,6 +1007,7 @@ namespace r.e.p.o_cheat
                     else Log1("Instância de PlayerAvatar é nula!");
                 }
                 else Log1("Campo 'playerAvatar' não encontrado em PlayerHealth!");
+
                 if (PhotonNetwork.IsConnected && photonView != null)
                 {
                     var maxHealthField = healthType.GetField("maxHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -904,10 +1099,45 @@ namespace r.e.p.o_cheat
                 initialized = true;
             }
 
-            if (DebugCheats.drawEspBool || DebugCheats.drawItemEspBool || DebugCheats.drawExtractionPointEspBool || DebugCheats.drawPlayerEspBool || DebugCheats.draw3DPlayerEspBool || DebugCheats.draw3DItemEspBool) DebugCheats.DrawESP();
+            if (DebugCheats.drawEspBool || DebugCheats.drawItemEspBool || DebugCheats.drawExtractionPointEspBool ||
+                DebugCheats.drawPlayerEspBool || DebugCheats.draw3DPlayerEspBool || DebugCheats.draw3DItemEspBool)
+                DebugCheats.DrawESP();
 
             GUI.Label(new Rect(10, 10, 200, 30), "D.A.R.K CHEAT | DEL - MENU");
             GUI.Label(new Rect(198, 10, 200, 30), "MADE BY Github/D4rkks");
+
+            // handle modal first
+            if (showingActionSelector)
+            {
+                Rect fullOverlay = new Rect(0, 0, Screen.width, Screen.height);
+                GUI.Box(fullOverlay, "", overlayDimStyle);
+
+                Rect modalRect = new Rect(actionSelectorX, actionSelectorY, 400, 400);
+
+                // trying to only block events that are outside the modal window
+                if (Event.current.type == EventType.MouseDown ||
+                    Event.current.type == EventType.MouseUp ||
+                    Event.current.type == EventType.MouseDrag)
+                {
+                    if (!modalRect.Contains(Event.current.mousePosition))
+                    {
+                        // blocking outer event
+                        Event.current.Use();
+                    }
+
+
+                modalRect = GUI.Window(12345, modalRect, ActionSelectorWindow, "", actionSelectorBoxStyle);
+                actionSelectorX = modalRect.x;
+                actionSelectorY = modalRect.y;
+            }
+
+            GUI.depth = 0;
+
+                if (Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout)
+                {
+                    return;
+                }
+            }
 
             if (showMenu)
             {
@@ -929,10 +1159,7 @@ namespace r.e.p.o_cheat
                     isDragging = true;
                     dragOffset = Event.current.mousePosition - new Vector2(menuX, menuY);
                 }
-                if (Event.current.type == EventType.MouseUp)
-                {
-                    isDragging = false;
-                }
+                if (Event.current.type == EventType.MouseUp) isDragging = false;
                 if (isDragging && Event.current.type == EventType.MouseDrag)
                 {
                     Vector2 newPosition = Event.current.mousePosition - dragOffset;
@@ -940,10 +1167,10 @@ namespace r.e.p.o_cheat
                     menuY = Mathf.Clamp(newPosition.y, 0, Screen.height - 730);
                 }
 
-                float tabWidth = 90f;
+                float tabWidth = 75f;
                 float tabHeight = 40f;
-                float spacing = 10f;
-                float totalWidth = 6 * tabWidth + 5 * spacing;
+                float spacing = 5f;
+                float totalWidth = 7 * tabWidth + 6 * spacing;
                 float startX = menuX + (600 - totalWidth) / 2f;
 
                 GUIStyle tabStyle = new GUIStyle(GUI.skin.button)
@@ -961,7 +1188,7 @@ namespace r.e.p.o_cheat
 
                 if (GUI.Button(new Rect(startX, menuY + 30, tabWidth, tabHeight), "Player", currentCategory == MenuCategory.Player ? selectedTabStyle : tabStyle))
                     currentCategory = MenuCategory.Player;
-                if (GUI.Button(new Rect(startX + tabWidth + spacing, menuY + 30, tabWidth, tabHeight), "ESP", currentCategory == MenuCategory.ESP ? selectedTabStyle : tabStyle))
+                if (GUI.Button(new Rect(startX + (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "ESP", currentCategory == MenuCategory.ESP ? selectedTabStyle : tabStyle))
                     currentCategory = MenuCategory.ESP;
                 if (GUI.Button(new Rect(startX + 2 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Combat", currentCategory == MenuCategory.Combat ? selectedTabStyle : tabStyle))
                     currentCategory = MenuCategory.Combat;
@@ -971,9 +1198,12 @@ namespace r.e.p.o_cheat
                     currentCategory = MenuCategory.Enemies;
                 if (GUI.Button(new Rect(startX + 5 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Items", currentCategory == MenuCategory.Items ? selectedTabStyle : tabStyle))
                     currentCategory = MenuCategory.Items;
+                if (GUI.Button(new Rect(startX + 6 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Hotkeys", currentCategory == MenuCategory.Hotkeys ? selectedTabStyle : tabStyle))
+                    currentCategory = MenuCategory.Hotkeys;
 
                 GUIStyle instructionStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = Color.white } };
                 GUI.Label(new Rect(menuX + 10, menuY + 75, 580, 20), "Press F5 to reload! Press DEL to close! Press F10 to unload!", instructionStyle);
+
                 switch (currentCategory)
                 {
                     case MenuCategory.Player:
@@ -1045,7 +1275,6 @@ namespace r.e.p.o_cheat
 
                     case MenuCategory.ESP:
                         DebugCheats.drawEspBool = UIHelper.Checkbox("Enemy ESP", DebugCheats.drawEspBool, menuX + 30, menuY + 105);
-
                         if (DebugCheats.drawEspBool)
                         {
                             DebugCheats.showEnemyNames = UIHelper.Checkbox("Show Enemy Names", DebugCheats.showEnemyNames, menuX + 50, menuY + 125);
@@ -1053,7 +1282,6 @@ namespace r.e.p.o_cheat
                         }
 
                         DebugCheats.drawItemEspBool = UIHelper.Checkbox("Item ESP", DebugCheats.drawItemEspBool, menuX + 30, menuY + 185);
-
                         if (DebugCheats.drawItemEspBool)
                         {
                             DebugCheats.showItemNames = UIHelper.Checkbox("Show Item Names", DebugCheats.showItemNames, menuX + 50, menuY + 205);
@@ -1063,7 +1291,6 @@ namespace r.e.p.o_cheat
                         }
 
                         DebugCheats.drawExtractionPointEspBool = UIHelper.Checkbox("Extraction ESP", DebugCheats.drawExtractionPointEspBool, menuX + 30, menuY + 325);
-
                         if (DebugCheats.drawExtractionPointEspBool)
                         {
                             DebugCheats.showExtractionNames = UIHelper.Checkbox("Show Extraction Names", DebugCheats.showExtractionNames, menuX + 50, menuY + 355);
@@ -1072,7 +1299,6 @@ namespace r.e.p.o_cheat
 
                         DebugCheats.drawPlayerEspBool = UIHelper.Checkbox("2D Player ESP", DebugCheats.drawPlayerEspBool, menuX + 30, menuY + 420);
                         DebugCheats.draw3DPlayerEspBool = UIHelper.Checkbox("3D Player ESP", DebugCheats.draw3DPlayerEspBool, menuX + 30, menuY + 450);
-
                         if (DebugCheats.drawPlayerEspBool || DebugCheats.draw3DPlayerEspBool)
                         {
                             DebugCheats.showPlayerNames = UIHelper.Checkbox("Show Player Names", DebugCheats.showPlayerNames, menuX + 50, menuY + 480);
@@ -1084,7 +1310,6 @@ namespace r.e.p.o_cheat
                     case MenuCategory.Combat:
                         UpdatePlayerList();
                         UIHelper.Label("Select a player:", menuX + 30, menuY + 95);
-
                         playerScrollPosition = GUI.BeginScrollView(new Rect(menuX + 30, menuY + 115, 540, 200), playerScrollPosition, new Rect(0, 0, 520, playerNames.Count * 35), false, true);
                         for (int i = 0; i < playerNames.Count; i++)
                         {
@@ -1123,6 +1348,7 @@ namespace r.e.p.o_cheat
                             playerColor.isRandomizing = newPlayerColorState;
                             Hax2.Log1("Randomize toggled: " + playerColor.isRandomizing);
                         }
+
                         UIHelper.Label("Flashlight Intensity: " + Hax2.flashlightIntensity, menuX + 30, menuY + 185);
                         Hax2.flashlightIntensity = UIHelper.Slider(Hax2.flashlightIntensity, 1f, 100f, menuX + 30, menuY + 205);
 
@@ -1244,6 +1470,7 @@ namespace r.e.p.o_cheat
                             GUI.color = Color.white;
                         }
                         GUI.EndScrollView();
+
                         if (UIHelper.Button("Teleport Item to Me", menuX + 30, menuY + 330))
                         {
                             if (selectedItemIndex >= 0 && selectedItemIndex < itemList.Count)
@@ -1274,6 +1501,135 @@ namespace r.e.p.o_cheat
                             }
                         }
                         break;
+
+                    case MenuCategory.Hotkeys:
+                        GUIStyle headerStyle = new GUIStyle(GUI.skin.label)
+                        {
+                            fontSize = 16,
+                            fontStyle = FontStyle.Bold,
+                            normal = { textColor = Color.white }
+                        };
+                        GUI.Label(new Rect(menuX + 70, menuY + 95, 540, 25), "Hotkey Configuration", headerStyle);
+
+                        GUI.Label(new Rect(menuX + 70, menuY + 120, 540, 20), "How to set up a hotkey:", instructionStyle);
+                        GUI.Label(new Rect(menuX + 90, menuY + 140, 540, 20), "1. Click on a key field → press desired key", instructionStyle);
+                        GUI.Label(new Rect(menuX + 90, menuY + 160, 540, 20), "2. Click on action field → select function", instructionStyle);
+
+                        GUIStyle warningStyle = new GUIStyle(GUI.skin.label)
+                        {
+                            fontSize = 12,
+                            normal = { textColor = Color.red }
+                        };
+                        GUI.Label(new Rect(menuX + 70, menuY + 185, 540, 20),
+                            "System keys (DEL, F5, F10, F12) cannot be used as hotkeys", warningStyle);
+
+                        float yPos = menuY + 215;
+
+                        for (int i = 0; i < 12; i++)
+                        {
+                            KeyCode currentKey = defaultHotkeys[i];
+                            string keyText = (currentKey == KeyCode.None) ? "Not Set" : currentKey.ToString();
+                            string actionName = "Not assigned";
+
+                            if (currentKey != KeyCode.None && hotkeyBindings.ContainsKey(currentKey))
+                            {
+                                var action = hotkeyBindings[currentKey];
+                                if (action != null)
+                                {
+                                    for (int j = 0; j < availableActions.Count; j++)
+                                    {
+                                        if (availableActions[j].Action == action)
+                                        {
+                                            actionName = availableActions[j].Name;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            Rect slotRect = new Rect(menuX + 30, yPos, 150, 30);
+                            bool isSelected = selectedHotkeySlot == i && configuringHotkey;
+
+                            if (GUI.Button(slotRect, isSelected ? "Press any key..." : keyText))
+                            {
+                                selectedHotkeySlot = i;
+                                configuringHotkey = true;
+                                pendingHotkey = KeyCode.None;
+                                Log1("configuring hotkey for slot " + (i + 1));
+                            }
+
+                            Rect actionRect = new Rect(menuX + 190, yPos, 290, 30);
+                            if (GUI.Button(actionRect, actionName))
+                            {
+                                selectedHotkeySlot = i;
+                                if (currentKey != KeyCode.None)
+                                {
+                                    ShowActionSelector(i, currentKey);
+                                }
+                                else
+                                {
+                                    Log1("Please assign a key to this slot first");
+                                }
+                            }
+
+                            Rect clearRect = new Rect(menuX + 490, yPos, 80, 30);
+                            if (GUI.Button(clearRect, "Clear") && currentKey != KeyCode.None)
+                            {
+                                if (hotkeyBindings.ContainsKey(currentKey))
+                                {
+                                    hotkeyBindings.Remove(currentKey);
+                                }
+                                defaultHotkeys[i] = KeyCode.None;
+                                Log1("cleared hotkey binding for slot " + (i + 1));
+                            }
+
+                            yPos += 40;
+                        }
+
+                        if (pendingHotkey != KeyCode.None)
+                        {
+                            KeyCode oldKey = defaultHotkeys[selectedHotkeySlot];
+                            Action currentAction = null;
+
+                            if (oldKey != KeyCode.None && hotkeyBindings.ContainsKey(oldKey))
+                            {
+                                currentAction = hotkeyBindings[oldKey];
+                                hotkeyBindings.Remove(oldKey);
+                            }
+
+                            defaultHotkeys[selectedHotkeySlot] = pendingHotkey;
+
+                            if (hotkeyBindings.ContainsKey(pendingHotkey))
+                            {
+                                Log1("Key already assigned. Reassigning.");
+
+                                if (currentAction != null)
+                                {
+                                    Action existingAction = hotkeyBindings[pendingHotkey];
+                                    hotkeyBindings[pendingHotkey] = currentAction;
+
+                                    for (int i = 0; i < defaultHotkeys.Length; i++)
+                                    {
+                                        if (i != selectedHotkeySlot && defaultHotkeys[i] == pendingHotkey)
+                                        {
+                                            defaultHotkeys[i] = KeyCode.None;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            else if (currentAction != null)
+                            {
+                                hotkeyBindings[pendingHotkey] = currentAction;
+                            }
+                            else
+                            {
+                                hotkeyBindings[pendingHotkey] = null;
+                            }
+
+                            pendingHotkey = KeyCode.None;
+                        }
+                        break;
                 }
             }
 
@@ -1286,6 +1642,25 @@ namespace r.e.p.o_cheat
                 {
                     if (!string.IsNullOrEmpty(logMessage.message)) UIHelper.DebugLabel(logMessage.message);
                 }
+            }
+
+            if (showingActionSelector)
+            {
+                // draw full-screen overlay and consume mouse events so main GUI is blocked
+                Rect fullOverlay = new Rect(0, 0, Screen.width, Screen.height);
+                GUI.Box(fullOverlay, "", overlayDimStyle);
+                if (Event.current.type == EventType.MouseDown ||
+                    Event.current.type == EventType.MouseUp ||
+                    Event.current.type == EventType.MouseDrag)
+                {
+                    Event.current.Use(); // consume events
+                }
+
+                // draw modal window using GUI.Window for natural dragging
+                Rect modalRect = new Rect(actionSelectorX, actionSelectorY, 400, 400);
+                modalRect = GUI.Window(12345, modalRect, ActionSelectorWindow, "", actionSelectorBoxStyle);
+                actionSelectorX = modalRect.x;
+                actionSelectorY = modalRect.y;
             }
         }
 
