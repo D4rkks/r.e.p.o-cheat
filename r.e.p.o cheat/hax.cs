@@ -410,14 +410,14 @@ namespace r.e.p.o_cheat
                 DebugCheats.valuableObjects.AddRange(valuableArray);
             }
 
-            var playerDeathHeadArray = UnityEngine.Object.FindObjectsOfType(Type.GetType("PlayerDeathHead, Assembly-CSharp"));
-            if (playerDeathHeadArray != null)
+            var Array = UnityEngine.Object.FindObjectsOfType(Type.GetType(", Assembly-CSharp"));
+            if (Array != null)
             {
-                DebugCheats.valuableObjects.AddRange(playerDeathHeadArray);
+                DebugCheats.valuableObjects.AddRange(Array);
             }
 
             itemList = ItemTeleport.GetItemList();
-            Hax2.Log1($"Lista de itens atualizada: {itemList.Count} itens encontrados (incluindo ValuableObject e PlayerDeathHead).");
+            Hax2.Log1($"Lista de itens atualizada: {itemList.Count} itens encontrados (incluindo ValuableObject e ).");
         }
 
         private void UpdateEnemyList()
@@ -702,22 +702,22 @@ namespace r.e.p.o_cheat
 
             try
             {
-                var playerDeathHeadField = selectedPlayer.GetType().GetField("playerDeathHead", BindingFlags.Public | BindingFlags.Instance);
-                if (playerDeathHeadField != null)
+                var Field = selectedPlayer.GetType().GetField("", BindingFlags.Public | BindingFlags.Instance);
+                if (Field != null)
                 {
-                    var playerDeathHeadInstance = playerDeathHeadField.GetValue(selectedPlayer);
-                    if (playerDeathHeadInstance != null)
+                    var Instance = Field.GetValue(selectedPlayer);
+                    if (Instance != null)
                     {
-                        var inExtractionPointField = playerDeathHeadInstance.GetType().GetField("inExtractionPoint", BindingFlags.NonPublic | BindingFlags.Instance);
-                        var reviveMethod = playerDeathHeadInstance.GetType().GetMethod("Revive", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        var inExtractionPointField = Instance.GetType().GetField("inExtractionPoint", BindingFlags.NonPublic | BindingFlags.Instance);
+                        var reviveMethod = Instance.GetType().GetMethod("Revive", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                         if (inExtractionPointField != null)
                         {
-                            inExtractionPointField.SetValue(playerDeathHeadInstance, true);
+                            inExtractionPointField.SetValue(Instance, true);
                             Log1("Campo 'inExtractionPoint' definido como true.");
                         }
                         if (reviveMethod != null)
                         {
-                            reviveMethod.Invoke(playerDeathHeadInstance, null);
+                            reviveMethod.Invoke(Instance, null);
                             Log1("Método 'Revive' chamado com sucesso para: " + playerNames[selectedPlayerIndex]);
                         }
                         else
@@ -727,12 +727,12 @@ namespace r.e.p.o_cheat
                     }
                     else
                     {
-                        Log1("Instância de playerDeathHead não encontrada.");
+                        Log1("Instância de  não encontrada.");
                     }
                 }
                 else
                 {
-                    Log1("Campo 'playerDeathHead' não encontrado.");
+                    Log1("Campo '' não encontrado.");
                 }
 
                 var playerHealthField = selectedPlayer.GetType().GetField("playerHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -1060,23 +1060,24 @@ namespace r.e.p.o_cheat
                             DebugCheats.showItemDistance = UIHelper.Checkbox("Show Item Distance", DebugCheats.showItemDistance, menuX + 50, menuY + 235);
                             DebugCheats.showItemValue = UIHelper.Checkbox("Show Item Value", DebugCheats.showItemValue, menuX + 50, menuY + 265);
                             DebugCheats.draw3DItemEspBool = UIHelper.Checkbox("3D Item ESP", DebugCheats.draw3DItemEspBool, menuX + 50, menuY + 295);
+                            DebugCheats.showPlayerDeathHeads = UIHelper.Checkbox("Show Dead Player Heads", DebugCheats.showPlayerDeathHeads, menuX + 50, menuY + 325);
                         }
 
-                        DebugCheats.drawExtractionPointEspBool = UIHelper.Checkbox("Extraction ESP", DebugCheats.drawExtractionPointEspBool, menuX + 30, menuY + 325);
+                        DebugCheats.drawExtractionPointEspBool = UIHelper.Checkbox("Extraction ESP", DebugCheats.drawExtractionPointEspBool, menuX + 30, menuY + 355);
 
                         if (DebugCheats.drawExtractionPointEspBool)
                         {
-                            DebugCheats.showExtractionNames = UIHelper.Checkbox("Show Extraction Names", DebugCheats.showExtractionNames, menuX + 50, menuY + 355);
-                            DebugCheats.showExtractionDistance = UIHelper.Checkbox("Show Extraction Distance", DebugCheats.showExtractionDistance, menuX + 50, menuY + 385);
+                            DebugCheats.showExtractionNames = UIHelper.Checkbox("Show Extraction Names", DebugCheats.showExtractionNames, menuX + 50, menuY + 385);
+                            DebugCheats.showExtractionDistance = UIHelper.Checkbox("Show Extraction Distance", DebugCheats.showExtractionDistance, menuX + 50, menuY + 420);
                         }
 
-                        DebugCheats.drawPlayerEspBool = UIHelper.Checkbox("2D Player ESP", DebugCheats.drawPlayerEspBool, menuX + 30, menuY + 420);
-                        DebugCheats.draw3DPlayerEspBool = UIHelper.Checkbox("3D Player ESP", DebugCheats.draw3DPlayerEspBool, menuX + 30, menuY + 450);
+                        DebugCheats.drawPlayerEspBool = UIHelper.Checkbox("2D Player ESP", DebugCheats.drawPlayerEspBool, menuX + 30, menuY + 450);
+                        DebugCheats.draw3DPlayerEspBool = UIHelper.Checkbox("3D Player ESP", DebugCheats.draw3DPlayerEspBool, menuX + 30, menuY + 480);
 
                         if (DebugCheats.drawPlayerEspBool || DebugCheats.draw3DPlayerEspBool)
                         {
-                            DebugCheats.showPlayerNames = UIHelper.Checkbox("Show Player Names", DebugCheats.showPlayerNames, menuX + 50, menuY + 480);
-                            DebugCheats.showPlayerDistance = UIHelper.Checkbox("Show Player Distance", DebugCheats.showPlayerDistance, menuX + 50, menuY + 510);
+                            DebugCheats.showPlayerNames = UIHelper.Checkbox("Show Player Names", DebugCheats.showPlayerNames, menuX + 50, menuY + 510);
+                            DebugCheats.showPlayerDistance = UIHelper.Checkbox("Show Player Distance", DebugCheats.showPlayerDistance, menuX + 50, menuY + 540);
                             DebugCheats.showPlayerHP = UIHelper.Checkbox("Show Player HP", DebugCheats.showPlayerHP, menuX + 50, menuY + 540);
                         }
                         break;

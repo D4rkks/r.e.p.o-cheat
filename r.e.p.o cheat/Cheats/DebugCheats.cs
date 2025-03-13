@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime; // Necessário para ReceiverGroup e RaiseEventOptions
@@ -31,12 +31,18 @@ namespace r.e.p.o_cheat
         public static bool draw3DItemEspBool = false;
         public static bool draw3DPlayerEspBool = false;
         public static bool drawExtractionPointEspBool = false;
+        public static GUIStyle nameStyle;
+        public static GUIStyle valueStyle;
+        public static GUIStyle enemyStyle;
+        public static GUIStyle healthStyle;
+        public static GUIStyle distanceStyle;
 
         public static bool showEnemyNames = true;
         public static bool showEnemyDistance = true;
         public static bool showItemNames = true;
         public static bool showItemValue = true;
         public static bool showItemDistance = false;
+        public static bool showPlayerDeathHeads = true;
         public static bool showExtractionNames = true;
         public static bool showExtractionDistance = true;
         public static bool showPlayerNames = true;
@@ -255,12 +261,12 @@ namespace r.e.p.o_cheat
                     }
                 }
             }
-            else 
+            else
             {
                 var players = SemiFunc.PlayerGetList();
                 if (players != null && players.Count > 0)
                 {
-                    var player = players[0]; 
+                    var player = players[0];
                     var gameObjectProperty = player.GetType().GetProperty("gameObject", BindingFlags.Public | BindingFlags.Instance);
                     if (gameObjectProperty != null)
                     {
@@ -379,6 +385,66 @@ namespace r.e.p.o_cheat
             RectOutlined(x - width / 2f, y - height, width, height, text, thickness);
         }
 
+        public static void InitializeStyles()
+        {
+            if (nameStyle == null)
+            {
+                nameStyle = new GUIStyle(GUI.skin.label)
+                {
+                    normal = { textColor = Color.yellow },
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 14,
+                    fontStyle = FontStyle.Bold,
+                    wordWrap = true,
+                    border = new RectOffset(1, 1, 1, 1)
+                };
+            }
+
+            if (valueStyle == null)
+            {
+                valueStyle = new GUIStyle(GUI.skin.label)
+                {
+                    normal = { textColor = Color.green },
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 12,
+                    fontStyle = FontStyle.Bold
+                };
+            }
+
+            if (enemyStyle == null)
+            {
+                enemyStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    wordWrap = true,
+                    fontSize = 12,
+                    fontStyle = FontStyle.Bold
+                };
+            }
+
+            if (healthStyle == null)
+            {
+                healthStyle = new GUIStyle(GUI.skin.label)
+                {
+                    normal = { textColor = Color.green },
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 12,
+                    fontStyle = FontStyle.Bold
+                };
+            }
+
+            if (distanceStyle == null)
+            {
+                distanceStyle = new GUIStyle(GUI.skin.label)
+                {
+                    normal = { textColor = Color.yellow },
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 12,
+                    fontStyle = FontStyle.Bold
+                };
+            }
+        }
+
         private static void CreateBoundsEdges(Bounds bounds, Color color)
         {
             Vector3[] vertices = new Vector3[8];
@@ -475,6 +541,7 @@ namespace r.e.p.o_cheat
         }
         public static void DrawESP()
         {
+            InitializeStyles();
             if (!drawEspBool && !drawItemEspBool && !drawExtractionPointEspBool && !drawPlayerEspBool && !draw3DPlayerEspBool && !draw3DItemEspBool) return;
             if (localPlayer == null)
             {
@@ -508,14 +575,6 @@ namespace r.e.p.o_cheat
 
             if (drawEspBool)
             {
-                GUIStyle enemyStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    wordWrap = true,
-                    fontSize = 12,
-                    fontStyle = FontStyle.Bold
-                };
-
                 foreach (var enemyInstance in enemyList)
                 {
                     if (enemyInstance == null || !enemyInstance.gameObject.activeInHierarchy || enemyInstance.CenterTransform == null) continue;
@@ -579,27 +638,12 @@ namespace r.e.p.o_cheat
 
             if (drawItemEspBool)
             {
-                GUIStyle nameStyle = new GUIStyle(GUI.skin.label)
-                {
-                    normal = { textColor = Color.yellow },
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 14,
-                    fontStyle = FontStyle.Bold,
-                    wordWrap = true,
-                    border = new RectOffset(1, 1, 1, 1)
-                };
-
-                GUIStyle valueStyle = new GUIStyle(GUI.skin.label)
-                {
-                    normal = { textColor = Color.green },
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 12,
-                    fontStyle = FontStyle.Bold
-                };
-
                 foreach (var valuableObject in valuableObjects)
                 {
                     if (valuableObject == null) continue;
+
+                    bool isPlayerDeathHead = valuableObject.GetType().Name == "PlayerDeathHead";
+                    if (!DebugCheats.showPlayerDeathHeads && isPlayerDeathHead) continue;
 
                     var transform = valuableObject.GetType().GetProperty("transform", BindingFlags.Public | BindingFlags.Instance)?.GetValue(valuableObject) as Transform;
                     if (transform == null || !transform.gameObject.activeInHierarchy) continue;
@@ -613,7 +657,7 @@ namespace r.e.p.o_cheat
                         float y = Screen.height - (screenPos.y * scaleY);
 
                         string itemName;
-                        bool isPlayerDeathHead = valuableObject.GetType().Name == "PlayerDeathHead";
+                        Color originalColor = nameStyle.normal.textColor;
 
                         if (isPlayerDeathHead)
                         {
@@ -665,6 +709,10 @@ namespace r.e.p.o_cheat
                             }
                         }
 
+                        // Set distance color
+                        Color distanceColor = isPlayerDeathHead ? Color.red : Color.yellow;
+                        nameStyle.normal.textColor = distanceColor;
+
                         string distanceText = "";
                         if (showItemDistance && localPlayer != null)
                         {
@@ -682,43 +730,32 @@ namespace r.e.p.o_cheat
                         float labelX = x - labelWidth / 2f;
                         float labelY = y - totalHeight - 5f;
 
+                        // Draw Name (with distance included in the same label)
                         if (!string.IsNullOrEmpty(nameText))
                         {
                             GUI.Label(new Rect(labelX, labelY, labelWidth, nameLabelHeight), nameText, nameStyle);
                         }
+
+                        // Draw Item Value (if not DeadPlayerHead)
                         if (showItemValue && !isPlayerDeathHead)
                         {
                             GUI.Label(new Rect(labelX, labelY + nameLabelHeight + 2f, labelWidth, valueLabelHeight), itemValue.ToString() + "$", valueStyle);
                         }
 
+                        // Draw 3D Item ESP if enabled
                         if (draw3DItemEspBool)
                         {
                             Bounds bounds = GetActiveColliderBounds(transform.gameObject);
                             CreateBoundsEdges(bounds, Color.yellow);
                         }
+
+                        nameStyle.normal.textColor = originalColor;
                     }
                 }
-	    }
-	
+            }
+
             if (drawExtractionPointEspBool)
             {
-                GUIStyle nameStyle = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 14,
-                    fontStyle = FontStyle.Bold,
-                    wordWrap = true,
-                    border = new RectOffset(1, 1, 1, 1)
-                };
-
-                GUIStyle valueStyle = new GUIStyle(GUI.skin.label)
-                {
-                    normal = { textColor = Color.white },
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 12,
-                    fontStyle = FontStyle.Bold
-                };
-
                 foreach (var epData in extractionPointList)
                 {
                     if (epData.ExtractionPoint == null || !epData.ExtractionPoint.gameObject.activeInHierarchy) continue;
@@ -733,6 +770,8 @@ namespace r.e.p.o_cheat
                         string pointName = "Extraction Point";
                         string stateText = $" ({epData.CachedState})";
                         string distanceText = showExtractionDistance && localPlayer != null ? $"{Vector3.Distance(localPlayer.transform.position, epData.CachedPosition):F1}m" : "";
+
+                        Color originalColor = nameStyle.normal.textColor;
 
                         nameStyle.normal.textColor = epData.CachedState == "Active" ? Color.green : (epData.CachedState == "Idle" ? Color.red : Color.cyan);
 
@@ -749,37 +788,15 @@ namespace r.e.p.o_cheat
                         {
                             GUI.Label(new Rect(labelX, labelY, labelWidth, nameLabelHeight), nameFullText, nameStyle);
                         }
+
+                        nameStyle.normal.textColor = originalColor;
+
                     }
                 }
             }
 
             if (drawPlayerEspBool || draw3DPlayerEspBool)
             {
-                GUIStyle nameStyle = new GUIStyle(GUI.skin.label)
-                {
-                    normal = { textColor = Color.white },
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 14,
-                    fontStyle = FontStyle.Bold,
-                    wordWrap = true,
-                    border = new RectOffset(1, 1, 1, 1)
-                };
-
-                GUIStyle healthStyle = new GUIStyle(GUI.skin.label)
-                {
-                    normal = { textColor = Color.green },
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 12,
-                    fontStyle = FontStyle.Bold
-                };
-
-                GUIStyle distanceStyle = new GUIStyle(GUI.skin.label)
-                {
-                    normal = { textColor = Color.yellow },
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 12,
-                    fontStyle = FontStyle.Bold
-                };
 
                 foreach (var playerData in playerDataList)
                 {
@@ -828,6 +845,9 @@ namespace r.e.p.o_cheat
                         Box(x, y, width, height, texture2, 2f);
                     }
 
+                    Color originalNameColor = nameStyle.normal.textColor;
+                    nameStyle.normal.textColor = Color.white;
+
                     int health = playerHealthCache.ContainsKey(playerData.PhotonView.ViewID) ? playerHealthCache[playerData.PhotonView.ViewID] : 100;
                     string healthText = $"HP: {health}";
                     string distanceText = showPlayerDistance && localPlayer != null ? $"{distanceToPlayer:F1}m" : "";
@@ -850,71 +870,73 @@ namespace r.e.p.o_cheat
                     {
                         GUI.Label(new Rect(labelX, labelY + nameHeight + 2f, labelWidth, healthHeight), healthText, healthStyle);
                     }
+
+                    nameStyle.normal.textColor = originalNameColor;
+
                 }
             }
         }
-
         private static int GetPlayerHealth(object player)
-        {
-            try
             {
-                var playerHealthField = player.GetType().GetField("playerHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (playerHealthField == null) return 100;
-
-                var playerHealthInstance = playerHealthField.GetValue(player);
-                if (playerHealthInstance == null) return 100;
-
-                var healthField = playerHealthInstance.GetType().GetField("health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (healthField == null) return 100;
-
-                return (int)healthField.GetValue(playerHealthInstance);
-            }
-            catch (Exception e)
-            {
-                Hax2.Log1($"Erro ao obter vida do jogador: {e.Message}");
-                return 100;
-            }
-        }
-
-
-        public static void KillAllEnemies()
-        {
-            Hax2.Log1("Tentando matar todos os inimigos");
-
-            foreach (var enemyInstance in enemyList)
-            {
-                if (enemyInstance == null) continue;
-
                 try
                 {
-                    var healthField = enemyInstance.GetType().GetField("Health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (healthField != null)
-                    {
-                        var healthComponent = healthField.GetValue(enemyInstance);
-                        if (healthComponent != null)
-                        {
-                            var healthType = healthComponent.GetType();
-                            var hurtMethod = healthType.GetMethod("Hurt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (hurtMethod != null)
-                            {
-                                hurtMethod.Invoke(healthComponent, new object[] { 9999, Vector3.zero });
-                                Hax2.Log1($"Inimigo ferido com 9999 de dano via Hurt");
-                            }
-                            else
-                                Hax2.Log1("Método 'Hurt' não encontrado em EnemyHealth");
-                        }
-                        else
-                            Hax2.Log1("Componente EnemyHealth é nulo");
-                    }
-                    else
-                        Hax2.Log1("Campo 'Health' não encontrado em Enemy");
+                    var playerHealthField = player.GetType().GetField("playerHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (playerHealthField == null) return 100;
+
+                    var playerHealthInstance = playerHealthField.GetValue(player);
+                    if (playerHealthInstance == null) return 100;
+
+                    var healthField = playerHealthInstance.GetType().GetField("health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (healthField == null) return 100;
+
+                    return (int)healthField.GetValue(playerHealthInstance);
                 }
                 catch (Exception e)
                 {
-                    Hax2.Log1($"Erro ao matar inimigo: {e.Message}");
+                    Hax2.Log1($"Erro ao obter vida do jogador: {e.Message}");
+                    return 100;
                 }
             }
-            UpdateEnemyList();
+
+
+            public static void KillAllEnemies()
+            {
+                Hax2.Log1("Tentando matar todos os inimigos");
+
+                foreach (var enemyInstance in enemyList)
+                {
+                    if (enemyInstance == null) continue;
+
+                    try
+                    {
+                        var healthField = enemyInstance.GetType().GetField("Health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        if (healthField != null)
+                        {
+                            var healthComponent = healthField.GetValue(enemyInstance);
+                            if (healthComponent != null)
+                            {
+                                var healthType = healthComponent.GetType();
+                                var hurtMethod = healthType.GetMethod("Hurt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                                if (hurtMethod != null)
+                                {
+                                    hurtMethod.Invoke(healthComponent, new object[] { 9999, Vector3.zero });
+                                    Hax2.Log1($"Inimigo ferido com 9999 de dano via Hurt");
+                                }
+                                else
+                                    Hax2.Log1("Método 'Hurt' não encontrado em EnemyHealth");
+                            }
+                            else
+                                Hax2.Log1("Componente EnemyHealth é nulo");
+                        }
+                        else
+                            Hax2.Log1("Campo 'Health' não encontrado em Enemy");
+                    }
+                    catch (Exception e)
+                    {
+                        Hax2.Log1($"Erro ao matar inimigo: {e.Message}");
+                    }
+                }
+                UpdateEnemyList();
+            }
         }
     }
-}
