@@ -230,8 +230,6 @@ namespace r.e.p.o_cheat
         private float menuY = 50f;
         private const float titleBarHeight = 30f;
 
-        private static bool cursorStateInitialized = false;
-
         public void Start()
         {
             menuStyle = new GUIStyle(GUI.skin.box)
@@ -344,6 +342,11 @@ namespace r.e.p.o_cheat
             if (showMenu)
             {
                 TryLockCamera();
+            }
+    
+            if (NoclipController.noclipActive)
+            {
+                NoclipController.UpdateMovement();
             }
         }
         private void TryLockCamera()
@@ -1020,19 +1023,22 @@ namespace r.e.p.o_cheat
                         bool newGodModeState = UIHelper.ButtonBool("Toggle God Mode", godModeActive, menuX + 30, menuY + 435);
                         if (newGodModeState != godModeActive) { PlayerController.GodMode(); godModeActive = newGodModeState; Hax2.Log1("God mode toggled: " + godModeActive); }
 
-                        UIHelper.Label("Speed Value " + sliderValue, menuX + 30, menuY + 475);
+                        bool newNoclipActive = UIHelper.ButtonBool("Toggle Noclip", NoclipController.noclipActive, menuX + 30, menuY + 475);
+                        if (newNoclipActive != NoclipController.noclipActive) { NoclipController.ToggleNoclip(); NoclipController.noclipActive = newNoclipActive; }
+
+                        UIHelper.Label("Speed Value " + sliderValue, menuX + 30, menuY + 515);
                         oldSliderValue = sliderValue;
-                        sliderValue = UIHelper.Slider(sliderValue, 1f, 30f, menuX + 30, menuY + 495);
+                        sliderValue = UIHelper.Slider(sliderValue, 1f, 30f, menuX + 30, menuY + 535);
 
-                        UIHelper.Label("Strength Value: " + sliderValueStrength, menuX + 30, menuY + 515);
+                        UIHelper.Label("Strength Value: " + sliderValueStrength, menuX + 30, menuY + 555);
                         oldSliderValueStrength = sliderValueStrength;
-                        sliderValueStrength = UIHelper.Slider(sliderValueStrength, 1f, 100f, menuX + 30, menuY + 535);
+                        sliderValueStrength = UIHelper.Slider(sliderValueStrength, 1f, 100f, menuX + 30, menuY + 575);
 
-                        UIHelper.Label("Stamina Recharge Delay: " + Hax2.staminaRechargeDelay, menuX + 30, menuY + 565);
-                        Hax2.staminaRechargeDelay = UIHelper.Slider(Hax2.staminaRechargeDelay, 0f, 10f, menuX + 30, menuY + 586);
+                        UIHelper.Label("Stamina Recharge Delay: " + Hax2.staminaRechargeDelay, menuX + 30, menuY + 605);
+                        Hax2.staminaRechargeDelay = UIHelper.Slider(Hax2.staminaRechargeDelay, 0f, 10f, menuX + 30, menuY + 626);
 
-                        UIHelper.Label("Stamina Recharge Rate: " + Hax2.staminaRechargeRate, menuX + 30, menuY + 605);
-                        Hax2.staminaRechargeRate = UIHelper.Slider(Hax2.staminaRechargeRate, 1f, 20f, menuX + 30, menuY + 625);
+                        UIHelper.Label("Stamina Recharge Rate: " + Hax2.staminaRechargeRate, menuX + 30, menuY + 645);
+                        Hax2.staminaRechargeRate = UIHelper.Slider(Hax2.staminaRechargeRate, 1f, 20f, menuX + 30, menuY + 665);
 
                         if (Hax2.staminaRechargeDelay != oldStaminaRechargeDelay || Hax2.staminaRechargeRate != oldStaminaRechargeRate)
                         {
