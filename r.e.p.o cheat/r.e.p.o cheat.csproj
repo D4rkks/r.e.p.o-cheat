@@ -14,6 +14,16 @@
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
   </PropertyGroup>
+  <!-- Game install: override REPOManagedDir in ..\GamePath.props (git-ignored, see GamePath.props.example) or with /p:REPOManagedDir=... -->
+  <Import Project="..\GamePath.props" Condition="Exists('..\GamePath.props')" />
+  <PropertyGroup>
+    <REPOManagedDir Condition=" '$(REPOManagedDir)' == '' ">C:\Program Files (x86)\Steam\steamapps\common\REPO\REPO_Data\Managed\</REPOManagedDir>
+  </PropertyGroup>
+  <!-- Mono can't unload assemblies: a unique name per build lets a new version be injected without restarting the game -->
+  <PropertyGroup Condition=" '$(HotReload)' == 'true' ">
+    <AssemblyName>r.e.p.o cheat_$([System.DateTime]::Now.ToString("yyyyMMdd_HHmmss"))</AssemblyName>
+    <Deterministic>false</Deterministic>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
@@ -31,76 +41,97 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="Autodesk.Fbx">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Autodesk.Fbx.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Autodesk.Fbx.dll</HintPath>
     </Reference>
     <Reference Include="Facepunch.Steamworks.Win64">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Facepunch.Steamworks.Win64.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Facepunch.Steamworks.Win64.dll</HintPath>
     </Reference>
     <Reference Include="FbxBuildTestAssets">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\FbxBuildTestAssets.dll</HintPath>
+      <HintPath>$(REPOManagedDir)FbxBuildTestAssets.dll</HintPath>
     </Reference>
     <Reference Include="Klattersynth">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Klattersynth.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Klattersynth.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Security">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Mono.Security.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Mono.Security.dll</HintPath>
     </Reference>
     <Reference Include="netstandard">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\netstandard.dll</HintPath>
+      <HintPath>$(REPOManagedDir)netstandard.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Newtonsoft.Json.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Photon3Unity3D">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Photon3Unity3D.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Photon3Unity3D.dll</HintPath>
     </Reference>
     <Reference Include="PhotonChat">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonChat.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonChat.dll</HintPath>
     </Reference>
     <Reference Include="PhotonRealtime">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonRealtime.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonRealtime.dll</HintPath>
     </Reference>
     <Reference Include="PhotonUnityNetworking">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonUnityNetworking.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonUnityNetworking.dll</HintPath>
     </Reference>
     <Reference Include="PhotonUnityNetworking.Utilities">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonUnityNetworking.Utilities.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonUnityNetworking.Utilities.dll</HintPath>
     </Reference>
     <Reference Include="PhotonVoice">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonVoice.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonVoice.dll</HintPath>
     </Reference>
     <Reference Include="PhotonVoice.API">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonVoice.API.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonVoice.API.dll</HintPath>
     </Reference>
     <Reference Include="PhotonVoice.PUN">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\PhotonVoice.PUN.dll</HintPath>
+      <HintPath>$(REPOManagedDir)PhotonVoice.PUN.dll</HintPath>
     </Reference>
     <Reference Include="SingularityGroup.HotReload.Runtime">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\SingularityGroup.HotReload.Runtime.dll</HintPath>
+      <HintPath>$(REPOManagedDir)SingularityGroup.HotReload.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="SingularityGroup.HotReload.Runtime.Public">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\SingularityGroup.HotReload.Runtime.Public.dll</HintPath>
+      <HintPath>$(REPOManagedDir)SingularityGroup.HotReload.Runtime.Public.dll</HintPath>
     </Reference>
     <Reference Include="Sirenix.OdinInspector.Attributes">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Sirenix.OdinInspector.Attributes.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Sirenix.OdinInspector.Attributes.dll</HintPath>
     </Reference>
     <Reference Include="Sirenix.Serialization">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Sirenix.Serialization.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Sirenix.Serialization.dll</HintPath>
     </Reference>
     <Reference Include="Sirenix.Serialization.Config">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Sirenix.Serialization.Config.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Sirenix.Serialization.Config.dll</HintPath>
     </Reference>
     <Reference Include="Sirenix.Utilities">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Sirenix.Utilities.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Sirenix.Utilities.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -113,260 +144,264 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="Unity.AI.Navigation">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.AI.Navigation.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.AI.Navigation.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Formats.Fbx.Runtime">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.Formats.Fbx.Runtime.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.Formats.Fbx.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.InputSystem">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.InputSystem.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.InputSystem.dll</HintPath>
     </Reference>
     <Reference Include="Unity.InputSystem.ForUI">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.InputSystem.ForUI.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.InputSystem.ForUI.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Postprocessing.Runtime">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.Postprocessing.Runtime.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.Postprocessing.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Runtime">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.RenderPipelines.Core.Runtime.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.RenderPipelines.Core.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Core.ShaderLibrary">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.RenderPipelines.Core.ShaderLibrary.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.RenderPipelines.Core.ShaderLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll</HintPath>
     </Reference>
     <Reference Include="Unity.TextMeshPro">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.TextMeshPro.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Timeline">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.Timeline.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.Timeline.dll</HintPath>
     </Reference>
     <Reference Include="Unity.VisualScripting.Antlr3.Runtime">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.VisualScripting.Core">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.VisualScripting.Core.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.VisualScripting.Core.dll</HintPath>
     </Reference>
     <Reference Include="Unity.VisualScripting.Flow">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.VisualScripting.Flow.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.VisualScripting.Flow.dll</HintPath>
     </Reference>
     <Reference Include="Unity.VisualScripting.State">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\Unity.VisualScripting.State.dll</HintPath>
+      <HintPath>$(REPOManagedDir)Unity.VisualScripting.State.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AccessibilityModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.AccessibilityModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.AccessibilityModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AIModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.AIModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.AIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AndroidJNIModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.AndroidJNIModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.AndroidJNIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AnimationModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.AnimationModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ARModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ARModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ARModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AssetBundleModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AudioModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.AudioModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.AudioModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ClothModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ClothModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ClothModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ClusterInputModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ClusterInputModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ClusterInputModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ClusterRendererModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ClusterRendererModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ClusterRendererModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ContentLoadModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ContentLoadModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ContentLoadModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CrashReportingModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.CrashReportingModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.CrashReportingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.DirectorModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.DirectorModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.DirectorModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.DSPGraphModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.DSPGraphModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.DSPGraphModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.GameCenterModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.GameCenterModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.GameCenterModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.GIModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.GIModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.GIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.GridModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.GridModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.GridModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.HotReloadModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.HotReloadModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.HotReloadModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ImageConversionModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.IMGUIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.InputModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.InputModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.JSONSerializeModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.JSONSerializeModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.JSONSerializeModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.LocalizationModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.LocalizationModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.LocalizationModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.NVIDIAModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.NVIDIAModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.NVIDIAModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ParticleSystemModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ParticleSystemModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PerformanceReportingModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.PerformanceReportingModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.PerformanceReportingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.Physics2DModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.Physics2DModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.Physics2DModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.PhysicsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ProfilerModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ProfilerModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ProfilerModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.PropertiesModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.PropertiesModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.PropertiesModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ScreenCaptureModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.ScreenCaptureModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.ScreenCaptureModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SharedInternalsModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.SharedInternalsModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.SharedInternalsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SpriteMaskModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.SpriteMaskModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.SpriteMaskModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SpriteShapeModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.SpriteShapeModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.SpriteShapeModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.StreamingModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.StreamingModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.StreamingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SubstanceModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.SubstanceModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.SubstanceModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.SubsystemsModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.SubsystemsModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.SubsystemsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TerrainModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TerrainModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TerrainModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TerrainPhysicsModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TerrainPhysicsModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TerrainPhysicsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextCoreFontEngineModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TextCoreFontEngineModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TextCoreFontEngineModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextCoreTextEngineModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TextCoreTextEngineModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TextCoreTextEngineModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TextRenderingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TilemapModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TilemapModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TilemapModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TLSModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.TLSModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.TLSModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIElementsModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UIElementsModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UIElementsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UmbraModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UmbraModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UmbraModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityAnalyticsCommonModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityAnalyticsCommonModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityAnalyticsCommonModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityAnalyticsModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityAnalyticsModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityAnalyticsModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityConnectModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityConnectModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityConnectModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityCurlModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityCurlModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityCurlModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityTestProtocolModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityTestProtocolModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityTestProtocolModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestAudioModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityWebRequestModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestTextureModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UnityWebRequestWWWModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VehiclesModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.VehiclesModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.VehiclesModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VFXModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.VFXModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.VFXModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VideoModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.VideoModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.VideoModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VirtualTexturingModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.VirtualTexturingModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.VirtualTexturingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.VRModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.VRModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.VRModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.WindModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.WindModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.WindModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.XRModule">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\UnityEngine.XRModule.dll</HintPath>
+      <HintPath>$(REPOManagedDir)UnityEngine.XRModule.dll</HintPath>
     </Reference>
     <Reference Include="websocket-sharp">
-      <HintPath>..\..\..\R.E.P.O\REPO_Data\Managed\websocket-sharp.dll</HintPath>
+      <HintPath>$(REPOManagedDir)websocket-sharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cheats\CrashLobby.cs" />
+    <Compile Include="Cheats\NoclipController.cs" />
+    <Compile Include="Cheats\ExtractionZone.cs" />
+    <Compile Include="Cheats\ItemPacker.cs" />
+    <Compile Include="Cheats\ExtractionControl.cs" />
     <Compile Include="Cheats\disablemethod.cs" />
     <Compile Include="Cheats\Items.cs" />
     <Compile Include="Cheats\ItemSpawner.cs" />
@@ -378,6 +413,9 @@
     <Compile Include="Cheats\playerColor.cs" />
     <Compile Include="Cheats\PlayerController.cs" />
     <Compile Include="Cheats\StrengthDebug.cs" />
+    <Compile Include="Cheats\SettingsEnforcer.cs" />
+    <Compile Include="Cheats\PlayerStatusOverlay.cs" />
+    <Compile Include="Cheats\EnemyHealthSync.cs" />
     <Compile Include="Cheats\Teleport.cs" />
     <Compile Include="main.cs" />
     <Compile Include="hax.cs" />

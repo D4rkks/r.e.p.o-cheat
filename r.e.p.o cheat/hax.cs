@@ -174,7 +174,7 @@ namespace r.e.p.o_cheat
         private List<Enemy> enemyList = new List<Enemy>();
         private float oldSliderValue = 0.5f;
         private float oldSliderValueStrength = 0.5f;
-        private float sliderValue = 0.5f;
+        public static float sliderValue = 0.5f;
         public static float sliderValueStrength = 0.5f;
         public static float offsetESp = 0.5f;
         private bool showMenu = true;
@@ -266,9 +266,17 @@ namespace r.e.p.o_cheat
             else Log1("playerMaxHealth null");
         }
 
+        public void OnDestroy()
+        {
+            // Destroyed by Loader.UnloadCheat (F10): drop network hooks so a reinjected copy doesn't double them
+            EnemyHealthSync.Unsubscribe();
+        }
+
         public void Update()
         {
             Strength.UpdateStrength();
+            SettingsEnforcer.Tick();
+            EnemyHealthSync.Tick();
 
             // Limit update frequency to prevent lag
             if (Time.time >= nextUpdateTime)
@@ -407,17 +415,9 @@ namespace r.e.p.o_cheat
         {
             DebugCheats.valuableObjects.Clear();
 
-            var valuableArray = UnityEngine.Object.FindObjectsOfType(Type.GetType("ValuableObject, Assembly-CSharp"));
-            if (valuableArray != null)
-            {
-                DebugCheats.valuableObjects.AddRange(valuableArray);
-            }
-
-            var Array = UnityEngine.Object.FindObjectsOfType(Type.GetType(", Assembly-CSharp"));
-            if (Array != null)
-            {
-                DebugCheats.valuableObjects.AddRange(Array);
-            }
+            DebugCheats.valuableObjects.AddRange(UnityEngine.Object.FindObjectsOfType<ValuableObject>());
+            DebugCheats.valuableObjects.AddRange(UnityEngine.Object.FindObjectsOfType<PlayerDeathHead>());
+            DebugCheats.valuableObjects.AddRange(UnityEngine.Object.FindObjectsOfType<CosmeticWorldObject>());
 
             itemList = ItemTeleport.GetItemList();
             Hax2.Log1($"Lista de itens atualizada: {itemList.Count} itens encontrados (incluindo ValuableObject e ).");
@@ -443,8 +443,7 @@ namespace r.e.p.o_cheat
                         enemyName = nameField?.GetValue(enemyParent) as string ?? "Enemy";
                     }
 
-                    int health = GetEnemyHealth(enemy);
-                    string healthText = health >= 0 ? $"HP: {health}" : "HP: Unknown";
+                    string healthText = DebugCheats.TryGetEnemyHealth(enemy, out int health, out int maxHealth) ? $"HP: {health}/{maxHealth}" : "HP: Unknown";
                     enemyNames.Add($"{enemyName} [{healthText}]");
                 }
             }
@@ -608,27 +607,6 @@ namespace r.e.p.o_cheat
             }
         }
 
-        private int GetEnemyHealth(Enemy enemy)
-        {
-            try
-            {
-                var healthField = enemy.GetType().GetField("Health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (healthField == null) return -1;
-
-                var healthComponent = healthField.GetValue(enemy);
-                if (healthComponent == null) return -1;
-
-                var healthValueField = healthComponent.GetType().GetField("health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (healthValueField == null) return -1;
-
-                return (int)healthValueField.GetValue(healthComponent);
-            }
-            catch (Exception e)
-            {
-                Hax2.Log1($"Erro ao obter vida do inimigo: {e.Message}");
-                return -1;
-            }
-        }
 
         private void UpdatePlayerList()
         {
@@ -705,37 +683,17 @@ namespace r.e.p.o_cheat
 
             try
             {
-                var Field = selectedPlayer.GetType().GetField("", BindingFlags.Public | BindingFlags.Instance);
-                if (Field != null)
+                // PlayerAvatar.Revive(bool _revivedByTruck): runs ReviveRPC locally in singleplayer, sends it to all in multiplayer.
+                // (PlayerDeathHead.Revive only works when the head is triggered and inside an extraction point.)
+                var reviveMethod = selectedPlayer.GetType().GetMethod("Revive", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (reviveMethod != null)
                 {
-                    var Instance = Field.GetValue(selectedPlayer);
-                    if (Instance != null)
-                    {
-                        var inExtractionPointField = Instance.GetType().GetField("inExtractionPoint", BindingFlags.NonPublic | BindingFlags.Instance);
-                        var reviveMethod = Instance.GetType().GetMethod("Revive", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (inExtractionPointField != null)
-                        {
-                            inExtractionPointField.SetValue(Instance, true);
-                            Log1("Campo 'inExtractionPoint' definido como true.");
-                        }
-                        if (reviveMethod != null)
-                        {
-                            reviveMethod.Invoke(Instance, null);
-                            Log1("Método 'Revive' chamado com sucesso para: " + playerNames[selectedPlayerIndex]);
-                        }
-                        else
-                        {
-                            Log1("Método 'Revive' não encontrado!");
-                        }
-                    }
-                    else
-                    {
-                        Log1("Instância de  não encontrada.");
-                    }
+                    reviveMethod.Invoke(selectedPlayer, Health_Player.BuildArgs(reviveMethod, false));
+                    Log1("Revive called for: " + playerNames[selectedPlayerIndex]);
                 }
                 else
                 {
-                    Log1("Campo '' não encontrado.");
+                    Log1($"Revive method not found on {selectedPlayer.GetType().Name}!");
                 }
 
                 var playerHealthField = selectedPlayer.GetType().GetField("playerHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -821,7 +779,7 @@ namespace r.e.p.o_cheat
                     var maxHealthField = healthType.GetField("maxHealth", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     int maxHealth = maxHealthField != null ? (int)maxHealthField.GetValue(playerHealthInstance) : 100;
                     Log1(maxHealthField != null ? $"maxHealth encontrado: {maxHealth}" : "Campo 'maxHealth' não encontrado, usando valor padrão: 100");
-                    photonView.RPC("UpdateHealthRPC", RpcTarget.AllBuffered, new object[] { 0, maxHealth, true });
+                    photonView.RPC("UpdateHealthRPC", RpcTarget.AllBuffered, new object[] { 0, maxHealth, true, false });
                     Log1($"RPC 'UpdateHealthRPC' enviado para todos com saúde=0, maxHealth={maxHealth}, effect=true.");
                     try { photonView.RPC("PlayerDeathRPC", RpcTarget.AllBuffered, new object[] { -1 }); Log1("Tentando RPC 'PlayerDeathRPC' para forçar morte..."); }
                     catch { Log1("RPC 'PlayerDeathRPC' não registrado, tentando alternativa..."); }
@@ -908,6 +866,8 @@ namespace r.e.p.o_cheat
             }
 
             if (DebugCheats.drawEspBool || DebugCheats.drawItemEspBool || DebugCheats.drawExtractionPointEspBool || DebugCheats.drawPlayerEspBool || DebugCheats.draw3DPlayerEspBool || DebugCheats.draw3DItemEspBool) DebugCheats.DrawESP();
+            ExtractionZone.DrawEsp();
+            PlayerStatusOverlay.Draw();
 
             GUI.Label(new Rect(10, 10, 200, 30), "D.A.R.K CHEAT | DEL - MENU");
             GUI.Label(new Rect(198, 10, 200, 30), "MADE BY Github/D4rkks");
@@ -1055,7 +1015,8 @@ namespace r.e.p.o_cheat
                         if (DebugCheats.drawEspBool)
                         {
                             DebugCheats.showEnemyNames = UIHelper.Checkbox("Show Enemy Names", DebugCheats.showEnemyNames, menuX + 50, menuY + 125);
-                            DebugCheats.showEnemyDistance = UIHelper.Checkbox("Show Enemy Distance", DebugCheats.showEnemyDistance, menuX + 50, menuY + 155);
+                            DebugCheats.showEnemyDistance = UIHelper.Checkbox("Show Enemy Distance", DebugCheats.showEnemyDistance, menuX + 50, menuY + 145);
+                            DebugCheats.showEnemyHealth = UIHelper.Checkbox("Show Enemy Health", DebugCheats.showEnemyHealth, menuX + 50, menuY + 165);
                         }
 
                         DebugCheats.drawItemEspBool = UIHelper.Checkbox("Item ESP", DebugCheats.drawItemEspBool, menuX + 30, menuY + 185);
@@ -1084,8 +1045,10 @@ namespace r.e.p.o_cheat
                         {
                             DebugCheats.showPlayerNames = UIHelper.Checkbox("Show Player Names", DebugCheats.showPlayerNames, menuX + 50, menuY + 510);
                             DebugCheats.showPlayerDistance = UIHelper.Checkbox("Show Player Distance", DebugCheats.showPlayerDistance, menuX + 50, menuY + 540);
-                            DebugCheats.showPlayerHP = UIHelper.Checkbox("Show Player HP", DebugCheats.showPlayerHP, menuX + 50, menuY + 540);
+                            DebugCheats.showPlayerHP = UIHelper.Checkbox("Show Player HP", DebugCheats.showPlayerHP, menuX + 50, menuY + 570);
                         }
+
+                        PlayerStatusOverlay.enabled = UIHelper.Checkbox("Player Status Overlay (alive / dead / spectating)", PlayerStatusOverlay.enabled, menuX + 30, menuY + 610);
                         break;
 
                     case MenuCategory.Combat:
@@ -1156,6 +1119,8 @@ namespace r.e.p.o_cheat
 
                         UIHelper.Label("Set Slide Decay: " + Hax2.slideDecay, menuX + 30, menuY + 505);
                         Hax2.slideDecay = UIHelper.Slider(Hax2.slideDecay, -10f, 50f, menuX + 30, menuY + 525);
+
+                        ExtractionControl.DrawMenu(menuX + 30, menuY + 565);
 
 
                         if (Hax2.flashlightIntensity != OldflashlightIntensity)
@@ -1280,6 +1245,11 @@ namespace r.e.p.o_cheat
                                 Hax2.Log1("Nenhum item válido selecionado para alterar valor!");
                             }
                         }
+                        if (UIHelper.Button("Teleport All Items to Extraction", menuX + 30, menuY + 450))
+                        {
+                            ItemTeleport.TeleportAllItemsToExtraction();
+                        }
+                        ExtractionZone.DrawMenu(menuX + 30, menuY + 490);
                         break;
                 }
             }

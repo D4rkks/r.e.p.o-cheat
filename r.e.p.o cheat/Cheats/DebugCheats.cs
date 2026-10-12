@@ -39,6 +39,23 @@ namespace r.e.p.o_cheat
 
         public static bool showEnemyNames = true;
         public static bool showEnemyDistance = true;
+        public static bool showEnemyHealth = true;
+
+        private static readonly FieldInfo enemyHealthComponentField = typeof(Enemy).GetField("Health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo enemyHealthCurrentField = typeof(EnemyHealth).GetField("healthCurrent", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo enemyHealthMaxField = typeof(EnemyHealth).GetField("health", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+        // EnemyHealth.health is the max, healthCurrent the current value
+        public static bool TryGetEnemyHealth(Enemy enemy, out int current, out int max)
+        {
+            current = max = -1;
+            if (enemy == null || enemyHealthComponentField == null) return false;
+            var healthComponent = enemyHealthComponentField.GetValue(enemy);
+            if (healthComponent == null) return false;
+            if (enemyHealthMaxField != null) max = (int)enemyHealthMaxField.GetValue(healthComponent);
+            if (enemyHealthCurrentField != null) current = (int)enemyHealthCurrentField.GetValue(healthComponent);
+            return current >= 0;
+        }
         public static bool showItemNames = true;
         public static bool showItemValue = true;
         public static bool showItemDistance = false;
@@ -627,6 +644,11 @@ namespace r.e.p.o_cheat
                         string fullText = "";
                         if (showEnemyNames) fullText = enemyName;
                         if (showEnemyDistance) fullText += distanceText;
+                        if (showEnemyHealth && TryGetEnemyHealth(enemyInstance, out int hpCurrent, out int hpMax))
+                        {
+                            string hpColor = hpMax > 0 && hpCurrent <= hpMax * 0.3f ? "red" : hpMax > 0 && hpCurrent <= hpMax * 0.6f ? "yellow" : "lime";
+                            fullText += (fullText.Length > 0 ? "\n" : "") + $"<color={hpColor}>HP {hpCurrent}/{hpMax}</color>";
+                        }
 
                         float labelHeight = enemyStyle.CalcHeight(new GUIContent(fullText), labelWidth);
                         float labelY = y - height - labelHeight;
@@ -695,7 +717,7 @@ namespace r.e.p.o_cheat
                         int itemValue = 0;
                         if (!isPlayerDeathHead)
                         {
-                            var valueField = valuableObject.GetType().GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.Instance);
+                            var valueField = valuableObject.GetType().GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                             if (valueField != null)
                             {
                                 try

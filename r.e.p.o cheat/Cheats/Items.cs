@@ -35,8 +35,7 @@ namespace r.e.p.o_cheat
             {
                 var itemType = selectedItem.ItemObject.GetType();
 
-                var valueField = itemType.GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.Instance);
-
+                var valueField = itemType.GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
                 if (valueField == null)
                 {
@@ -44,7 +43,7 @@ namespace r.e.p.o_cheat
                     return;
                 }
 
-                valueField.SetValue(selectedItem.ItemObject, newValue);
+                valueField.SetValue(selectedItem.ItemObject, Convert.ChangeType(newValue, valueField.FieldType));
                 selectedItem.Value = newValue;
 
                 Hax2.Log1($"Successfully set '{selectedItem.Name}' value to ${newValue}");
@@ -122,7 +121,7 @@ namespace r.e.p.o_cheat
                 // Only check dollarValueCurrent if it's NOT PlayerDeathHead
                 if (valuableObject.GetType().Name != "PlayerDeathHead")
                 {
-                    var valueField = valuableObject.GetType().GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.Instance);
+                    var valueField = valuableObject.GetType().GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                     if (valueField != null)
                     {
                         try
@@ -164,6 +163,8 @@ namespace r.e.p.o_cheat
             PerformTeleport(selectedItem);
         }
 
+        private const float ImpactProtectionSeconds = 8f;
+
         public static void TeleportAllItemsToMe()
         {
             try
@@ -171,29 +172,74 @@ namespace r.e.p.o_cheat
                 GameObject player = DebugCheats.GetLocalPlayer();
                 if (player == null)
                 {
-                    Hax2.Log1("Jogador local não encontrado!");
+                    Hax2.Log1("Local player not found!");
                     return;
                 }
 
-                Vector3 targetPosition = player.transform.position + player.transform.forward * 1f + Vector3.up * 1.5f;
-                Hax2.Log1($"Target position for teleporting all items: {targetPosition}");
+                Vector3 forward = player.transform.forward;
+                forward.y = 0f;
+                forward = forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
+                Vector3 center = player.transform.position + forward * 2.5f;
 
-                List<GameItem> itemList = GetItemList();
-                int itemsTeleported = 0;
-
-                foreach (var item in itemList)
-                {
-                    if (item.ItemObject == null) continue;
-                    PerformTeleport(item);
-                    itemsTeleported++;
-                }
-
-                Hax2.Log1($"Teleporte de todos os itens concluído. Total de itens teleportados: {itemsTeleported}");
+                int count = ItemPacker.Pack(GetItemList(), center, Quaternion.LookRotation(forward), 3f, 3f);
+                Hax2.Log1($"Packed {count} items in front of the player.");
             }
             catch (Exception e)
             {
-                Hax2.Log1($"Erro ao teleportar todos os itens: {e.Message}");
+                Hax2.Log1($"Error teleporting all items: {e.Message}");
             }
+        }
+
+        public static void TeleportAllItemsToExtraction()
+        {
+            try
+            {
+                ExtractionPoint ep = FindTargetExtractionPoint();
+                if (ep == null)
+                {
+                    Hax2.Log1("No extraction point found!");
+                    return;
+                }
+
+                ExtractionZone.GetZone(ep, out Vector3 center, out Quaternion rotation);
+                int count = ItemPacker.Pack(GetItemList(), center, rotation, ExtractionZone.sizeX, ExtractionZone.sizeZ);
+                Hax2.Log1($"Packed {count} items on extraction '{ep.name}'.");
+            }
+            catch (Exception e)
+            {
+                Hax2.Log1($"Error teleporting items to extraction: {e.Message}");
+            }
+        }
+
+        internal static ExtractionPoint FindTargetExtractionPoint()
+        {
+            var roundDirector = RoundDirector.instance;
+            if (roundDirector != null)
+            {
+                var current = typeof(RoundDirector)
+                    .GetField("extractionPointCurrent", BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?.GetValue(roundDirector) as ExtractionPoint;
+                if (current != null) return current;
+            }
+
+            GameObject player = DebugCheats.GetLocalPlayer();
+            var stateField = typeof(ExtractionPoint).GetField("currentState", BindingFlags.NonPublic | BindingFlags.Instance);
+            ExtractionPoint best = null;
+            float bestDistance = float.MaxValue;
+
+            foreach (var ep in UnityEngine.Object.FindObjectsOfType<ExtractionPoint>())
+            {
+                if (ep == null || !ep.gameObject.activeInHierarchy) continue;
+                if (stateField?.GetValue(ep)?.ToString() == "Complete") continue;
+
+                float distance = player != null ? Vector3.Distance(player.transform.position, ep.transform.position) : 0f;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = ep;
+                }
+            }
+            return best;
         }
 
         public static void TeleportSelectedItemToMe(GameItem selectedItem)
@@ -242,145 +288,58 @@ namespace r.e.p.o_cheat
                     return;
                 }
 
-                PhotonView itemPhotonView = itemTransform.GetComponent<PhotonView>();
-                if (itemPhotonView == null)
-                {
-                    Hax2.Log1($"Item '{item.Name}' não tem PhotonView, teleporte apenas local.");
-                    itemTransform.position = targetPosition;
-                    return;
-                }
-
-                if (PhotonNetwork.IsConnected && !itemPhotonView.IsMine)
-                {
-                    itemPhotonView.RequestOwnership();
-                    Hax2.Log1($"Solicitada posse do item '{item.Name}' (ViewID: {itemPhotonView.ViewID})");
-                }
-
-                var transformView = itemTransform.GetComponent<PhotonTransformView>();
-                bool wasTransformViewActive = false;
-
-                if (transformView != null && transformView.enabled)
-                {
-                    wasTransformViewActive = true;
-                    transformView.enabled = false;
-                    Hax2.Log1($"PhotonTransformView desativado temporariamente no item '{item.Name}'");
-                }
-
-                Rigidbody rb = itemTransform.GetComponent<Rigidbody>();
-                bool wasRbActive = false;
-                if (rb != null)
-                {
-                    wasRbActive = !rb.isKinematic;
-                    rb.isKinematic = true;
-                    Hax2.Log1($"Rigidbody do item '{item.Name}' desativado temporariamente");
-                }
-
-                itemTransform.position = targetPosition;
-                Hax2.Log1($"Item '{item.Name}' teleportado localmente para {targetPosition}");
-                Vector3 currentPosition = itemTransform.position;
-                Hax2.Log1($"Posição atual do item '{item.Name}' após teleporte: {currentPosition}");
-                if (PhotonNetwork.IsConnected && itemPhotonView != null)
-                {
-                    itemPhotonView.RPC("TeleportItemRPC", RpcTarget.AllBuffered, targetPosition);
-                    Hax2.Log1($"Enviado RPC 'TeleportItemRPC' para todos para item '{item.Name}'");
-                }
-                if (wasTransformViewActive || wasRbActive)
-                {
-                    itemTransform.gameObject.AddComponent<DelayedPhysicsReset>().Setup(rb, transformView);
-                }
-                var itemGO = itemTransform.gameObject;
-                if (itemGO != null)
-                {
-                    itemGO.SetActive(false);
-                    itemGO.SetActive(true);
-                    Hax2.Log1($"Item '{item.Name}' reativado para forçar renderização.");
-                }
-
-                Hax2.Log1($"Teleporte do item '{item.Name}' concluído.");
+                MoveItem(item, itemTransform, targetPosition);
             }
             catch (Exception e)
             {
                 Hax2.Log1($"Erro ao teleportar item '{item.Name}': {e.Message}");
             }
         }
-    }
-    public class ItemTeleportComponent : MonoBehaviour, IPunOwnershipCallbacks
-    {
-        private PhotonView photonView;
 
-        private void Awake()
+        internal static void MoveItem(GameItem item, Transform itemTransform, Vector3 targetPosition, Quaternion? targetRotation = null)
         {
-            photonView = GetComponent<PhotonView>();
-            if (photonView == null)
+            Quaternion rotation = targetRotation ?? itemTransform.rotation;
+            try
             {
-                Hax2.Log1($"PhotonView não encontrado no item '{gameObject.name}', adicionando um novo.");
-                photonView = gameObject.AddComponent<PhotonView>();
+                PhotonView itemPhotonView = itemTransform.GetComponent<PhotonView>();
+                if (itemPhotonView != null && PhotonNetwork.IsConnected && !itemPhotonView.IsMine)
+                {
+                    itemPhotonView.RequestOwnership();
+                }
+
+                var impactDetector = itemTransform.GetComponent<PhysGrabObjectImpactDetector>();
+                if (impactDetector != null)
+                {
+                    impactDetector.ImpactDisable(ImpactProtectionSeconds);
+                }
+
+                Rigidbody rb = itemTransform.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.isKinematic = false;
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+
+                var physGrabObject = itemTransform.GetComponent<PhysGrabObject>();
+                if (physGrabObject != null)
+                {
+                    physGrabObject.Teleport(targetPosition, rotation);
+                }
+                else
+                {
+                    if (rb != null)
+                    {
+                        rb.position = targetPosition;
+                        rb.rotation = rotation;
+                    }
+                    itemTransform.SetPositionAndRotation(targetPosition, rotation);
+                }
             }
-            PhotonNetwork.AddCallbackTarget(this);
-        }
-
-        private void OnDestroy()
-        {
-            PhotonNetwork.RemoveCallbackTarget(this);
-        }
-
-        [PunRPC]
-        private void TeleportItemRPC(Vector3 targetPosition)
-        {
-            transform.position = targetPosition;
-            Hax2.Log1($"Item '{gameObject.name}' sincronizado para {targetPosition} via RPC");
-        }
-
-        public void OnOwnershipRequest(PhotonView targetView, Player requestingPlayer)
-        {
-            if (targetView == photonView)
+            catch (Exception e)
             {
-                Hax2.Log1($"Ownership requested for '{gameObject.name}' by player {requestingPlayer.ActorNumber}");
+                Hax2.Log1($"Error moving item '{item.Name}': {e.Message}");
             }
-        }
-
-        public void OnOwnershipTransfered(PhotonView targetView, Player previousOwner)
-        {
-            if (targetView == photonView)
-            {
-                Hax2.Log1($"Ownership of '{gameObject.name}' transferred from {previousOwner?.ActorNumber} to {targetView.OwnerActorNr}");
-            }
-        }
-
-        public void OnOwnershipTransferFailed(PhotonView targetView, Player senderOfFailedRequest)
-        {
-            if (targetView == photonView)
-            {
-                Hax2.Log1($"Ownership transfer failed for '{gameObject.name}' by player {senderOfFailedRequest.ActorNumber}");
-            }
-        }
-    }
-    public class DelayedPhysicsReset : MonoBehaviour
-    {
-        private Rigidbody rb;
-        private PhotonTransformView transformView;
-        private float delay = 1f;
-
-        public void Setup(Rigidbody rigidbody, PhotonTransformView tView = null)
-        {
-            rb = rigidbody;
-            transformView = tView;
-            Invoke(nameof(ResetPhysics), delay);
-        }
-
-        private void ResetPhysics()
-        {
-            if (rb != null)
-            {
-                rb.isKinematic = false;
-                Hax2.Log1($"Physics reativada para '{gameObject.name}' após teleporte");
-            }
-            if (transformView != null)
-            {
-                transformView.enabled = true;
-                Hax2.Log1($"PhotonTransformView reativado para '{gameObject.name}' após teleporte");
-            }
-            Destroy(this);
         }
     }
 }
