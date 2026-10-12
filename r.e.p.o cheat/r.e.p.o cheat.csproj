@@ -416,6 +416,7 @@
     <Compile Include="Cheats\SettingsEnforcer.cs" />
     <Compile Include="Cheats\PlayerStatusOverlay.cs" />
     <Compile Include="Cheats\EnemyHealthSync.cs" />
+    <Compile Include="Cheats\ObjectSpawner.cs" />
     <Compile Include="Cheats\Teleport.cs" />
     <Compile Include="main.cs" />
     <Compile Include="hax.cs" />
@@ -425,4 +426,4 @@
     <None Include="Cheats\ChamsShader.shader" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-</Project>
+</Project>

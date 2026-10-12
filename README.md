@@ -35,7 +35,7 @@ Basic C# Mono open-source cheat for a new lethal like game called R.E.P.O.
 
 ### ⚔️ Combat & Players
 - **Player Interaction**: Damage, heal, kill, or revive any player in the lobby.
-- **Teleportation**: Move players to yourself, to each other, or into "The Void".
+- **Teleportation**: Move players to yourself (host only, as in the game), teleport yourself to any player, or send players into "The Void".
 - **Social**: Spoof names or use a Rainbow Name effect.
 
 ### 👾 Enemies
@@ -44,7 +44,9 @@ Basic C# Mono open-source cheat for a new lethal like game called R.E.P.O.
 - **Mob Spawner**: Spawn any enemy in the game (Host/MasterClient required).
 
 ### 📦 Items
-- **Item Spawner**: Spawn valuables with custom values (Host/MasterClient required).
+- **Object Spawner** (Spawner tab): spawn any shop item, any valuable (optional custom value) or cosmetic box, the same way the game does (Host/MasterClient required in multiplayer).
+- **Money Bag Spawner**: spawn a money bag with a custom value (bag size follows the value).
+- **Set Item Value**: set any value on the selected item (synced to everyone when host).
 - **Item Teleport**: Pull all items to your position.
 - **Pack Items on Extraction**: Teleport every valuable onto the extraction platform, Tetris-style (exact collider sizes, laid flat, heightmap stacking, items that roll out are re-placed automatically).
 - **Extraction Control**: Pick any extraction point, teleport to it or activate it remotely.

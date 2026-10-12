@@ -94,13 +94,9 @@ namespace r.e.p.o_cheat
                 look.y = 0f;
                 Quaternion rotation = look.sqrMagnitude > 0.01f ? Quaternion.LookRotation(look) : player.transform.rotation;
 
-                player.transform.position = target;
-                var photonView = player.GetComponent<PhotonView>();
-                if (PhotonNetwork.IsConnected && photonView != null)
-                {
-                    photonView.RPC("SpawnRPC", RpcTarget.All, target, rotation);
-                }
-                Hax2.Log1($"Teleported to extraction '{ep.name}' at {target}");
+                // SpawnRPC is host-only; moving our own PlayerController works for everyone
+                if (Teleport.TeleportLocalPlayer(target, rotation))
+                    Hax2.Log1($"Teleported to extraction '{ep.name}' at {target}");
             }
             catch (Exception e)
             {

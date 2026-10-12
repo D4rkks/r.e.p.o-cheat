@@ -175,6 +175,8 @@ namespace r.e.p.o_cheat
         private float oldSliderValue = 0.5f;
         private float oldSliderValueStrength = 0.5f;
         public static float sliderValue = 0.5f;
+        private static string moneyValueText = "45000";
+        private static string itemValueText = "10000";
         public static float sliderValueStrength = 0.5f;
         public static float offsetESp = 0.5f;
         private bool showMenu = true;
@@ -190,7 +192,7 @@ namespace r.e.p.o_cheat
         private bool initialized = false;
         private static Dictionary<Color, Texture2D> solidTextures = new Dictionary<Color, Texture2D>();
 
-        private enum MenuCategory { Player, ESP, Combat, Misc, Enemies, Items }
+        private enum MenuCategory { Player, ESP, Combat, Misc, Enemies, Items, Spawner }
         private MenuCategory currentCategory = MenuCategory.Player;
 
         public static float staminaRechargeDelay = 1f;
@@ -903,10 +905,10 @@ namespace r.e.p.o_cheat
                     menuY = Mathf.Clamp(newPosition.y, 0, Screen.height - 730);
                 }
 
-                float tabWidth = 90f;
+                float tabWidth = 76f;
                 float tabHeight = 40f;
-                float spacing = 10f;
-                float totalWidth = 6 * tabWidth + 5 * spacing;
+                float spacing = 6f;
+                float totalWidth = 7 * tabWidth + 6 * spacing;
                 float startX = menuX + (600 - totalWidth) / 2f;
 
                 GUIStyle tabStyle = new GUIStyle(GUI.skin.button)
@@ -934,6 +936,8 @@ namespace r.e.p.o_cheat
                     currentCategory = MenuCategory.Enemies;
                 if (GUI.Button(new Rect(startX + 5 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Items", currentCategory == MenuCategory.Items ? selectedTabStyle : tabStyle))
                     currentCategory = MenuCategory.Items;
+                if (GUI.Button(new Rect(startX + 6 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Spawner", currentCategory == MenuCategory.Spawner ? selectedTabStyle : tabStyle))
+                    currentCategory = MenuCategory.Spawner;
 
                 GUIStyle instructionStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = Color.white } };
                 GUI.Label(new Rect(menuX + 10, menuY + 75, 580, 20), "Press F5 to reload! Press DEL to close! Press F10 to unload!", instructionStyle);
@@ -1068,26 +1072,30 @@ namespace r.e.p.o_cheat
                         if (UIHelper.Button("Revive", menuX + 30, menuY + 330)) { ReviveSelectedPlayer(); Hax2.Log1("Player revived: " + playerNames[selectedPlayerIndex]); }
                         if (UIHelper.Button("Kill Selected Player", menuX + 30, menuY + 370)) { KillSelectedPlayer(); Hax2.Log1("Tentativa de matar o jogador selecionado realizada."); }
                         if (UIHelper.Button("Send Player To Void", menuX + 30, menuY + 410)) SendSelectedPlayerToVoid();
-                        if (UIHelper.Button("Teleport Player To Me", menuX + 30, menuY + 450)) { Teleport.TeleportPlayerToMe(selectedPlayerIndex, playerList, playerNames); Hax2.Log1($"Teleportado {playerNames[selectedPlayerIndex]} até você."); }
-                        if (UIHelper.Button("Teleport Me To Player", menuX + 30, menuY + 490)) { Teleport.TeleportMeToPlayer(selectedPlayerIndex, playerList, playerNames); Hax2.Log1($"Teleportado você até {playerNames[selectedPlayerIndex]}."); }
+                        if (UIHelper.Button("Teleport Player To Me", menuX + 30, menuY + 450)) { Teleport.TeleportPlayerToMe(selectedPlayerIndex, playerList, playerNames); }
+                        if (UIHelper.Button("Teleport Me To Player", menuX + 30, menuY + 490)) { Teleport.TeleportMeToPlayer(selectedPlayerIndex, playerList, playerNames); }
                         break;
 
                     case MenuCategory.Misc:
-                        if (UIHelper.Button("Spawn Money", menuX + 30, menuY + 105))
+                        GUI.Label(new Rect(menuX + 300, menuY + 110, 20, 20), "$");
+                        moneyValueText = GUI.TextField(new Rect(menuX + 315, menuY + 107, 120, 26), moneyValueText, 9);
+                        moneyValueText = new string(moneyValueText.Where(char.IsDigit).ToArray());
+                        if (UIHelper.Button("Spawn Money", menuX + 30, menuY + 105, 260, 30))
                         {
-                            Hax2.Log1("Botão 'Spawn Money' clicado!");
                             GameObject localPlayer = DebugCheats.GetLocalPlayer();
                             if (localPlayer == null)
                             {
-                                Hax2.Log1("Jogador local não encontrado!");
-                                return;
+                                Hax2.Log1("Local player not found!");
                             }
-                            Vector3 targetPosition = localPlayer.transform.position + Vector3.up * 1.5f;
-                            transform.position = targetPosition;
-                            ItemSpawner.SpawnItem(targetPosition);
-                            Hax2.Log1("Money spawned.");
-                        }
-                        bool newPlayerColorState = UIHelper.ButtonBool("RGB Player", playerColor.isRandomizing, menuX + 30, menuY + 145);
+                            else
+                            {
+                                int moneyValue = int.TryParse(moneyValueText, out int parsed) && parsed > 0 ? parsed : 45000;
+                                // In front of the player instead of inside them, so the bag doesn't get pushed out by the player's collider
+                                Vector3 targetPosition = localPlayer.transform.position + localPlayer.transform.forward * 1.5f + Vector3.up * 1f;
+                                ItemSpawner.SpawnItem(targetPosition, moneyValue);
+                                Hax2.Log1($"Money spawned: ${moneyValue}");
+                            }
+                        }                        bool newPlayerColorState = UIHelper.ButtonBool("RGB Player", playerColor.isRandomizing, menuX + 30, menuY + 145);
                         if (newPlayerColorState != playerColor.isRandomizing)
                         {
                             playerColor.isRandomizing = newPlayerColorState;
@@ -1201,6 +1209,10 @@ namespace r.e.p.o_cheat
                         }
                         break;
 
+                    case MenuCategory.Spawner:
+                        ObjectSpawner.DrawMenu(menuX + 30, menuY + 95);
+                        break;
+
                     case MenuCategory.Items:
                         UIHelper.Label("Select an item:", menuX + 30, menuY + 95);
 
@@ -1233,11 +1245,15 @@ namespace r.e.p.o_cheat
                             ItemTeleport.TeleportAllItemsToMe();
                             Hax2.Log1("Teleporting all items initiated.");
                         }
-                        if (UIHelper.Button("Change Item Value to 10K", menuX + 30, menuY + 410))
+                        GUI.Label(new Rect(menuX + 300, menuY + 415, 20, 20), "$");
+                        itemValueText = GUI.TextField(new Rect(menuX + 315, menuY + 412, 120, 26), itemValueText, 9);
+                        itemValueText = new string(itemValueText.Where(char.IsDigit).ToArray());
+                        if (UIHelper.Button("Set Selected Item Value", menuX + 30, menuY + 410, 260, 30))
                         {
                             if (selectedItemIndex >= 0 && selectedItemIndex < itemList.Count)
                             {
-                                ItemTeleport.SetItemValue(itemList[selectedItemIndex], 10000);
+                                int itemValue = int.TryParse(itemValueText, out int parsedValue) && parsedValue > 0 ? parsedValue : 10000;
+                                ItemTeleport.SetItemValue(itemList[selectedItemIndex], itemValue);
                                 Hax2.Log1($"Updated value: {itemList[selectedItemIndex].Value}");
                             }
                             else

@@ -34,19 +34,34 @@ namespace r.e.p.o_cheat
             try
             {
                 var itemType = selectedItem.ItemObject.GetType();
+                var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-                var valueField = itemType.GetField("dollarValueCurrent", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
+                var valueField = itemType.GetField("dollarValueCurrent", flags);
                 if (valueField == null)
                 {
                     Hax2.Log1($"Error: Could not find 'dollarValueCurrent' field in {selectedItem.Name}");
                     return;
                 }
 
+                // Break damage is computed from the original value, so set both (same as DollarValueSetRPC does)
                 valueField.SetValue(selectedItem.ItemObject, Convert.ChangeType(newValue, valueField.FieldType));
+                var originalField = itemType.GetField("dollarValueOriginal", flags);
+                if (originalField != null) originalField.SetValue(selectedItem.ItemObject, Convert.ChangeType(newValue, originalField.FieldType));
                 selectedItem.Value = newValue;
 
-                Hax2.Log1($"Successfully set '{selectedItem.Name}' value to ${newValue}");
+                // DollarValueSetRPC is MasterOnlyRPC: only the host can push the value to everyone
+                bool synced = false;
+                if (selectedItem.ItemObject is ValuableObject valuable && SemiFunc.IsMultiplayer() && PhotonNetwork.IsMasterClient)
+                {
+                    var view = valuable.GetComponent<PhotonView>();
+                    if (view != null)
+                    {
+                        view.RPC("DollarValueSetRPC", RpcTarget.Others, (float)newValue);
+                        synced = true;
+                    }
+                }
+
+                Hax2.Log1($"Set '{selectedItem.Name}' value to ${newValue}" + (SemiFunc.IsMultiplayer() ? (synced ? " (synced to all)" : " (local only: not host)") : ""));
             }
             catch (Exception e)
             {
