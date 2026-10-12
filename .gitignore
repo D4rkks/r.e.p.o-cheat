@@ -1,0 +1,14 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+
+# Local game path (copy GamePath.props.example)
+GamePath.props
+
+# Third-party injector binaries: download them from the official release (see README)
+SharpMonoInjector.Console/
