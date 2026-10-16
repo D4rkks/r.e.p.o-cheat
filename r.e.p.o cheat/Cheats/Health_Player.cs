@@ -51,7 +51,7 @@ namespace r.e.p.o_cheat
                     int maxHealth = maxHealthField != null ? (int)maxHealthField.GetValue(playerHealthInstance) : 100;
                     Hax2.Log1(maxHealthField != null ? $"maxHealth encontrado: {maxHealth}" : "Campo 'maxHealth' não encontrado, usando valor padrão: 100");
 
-                    photonView.RPC("UpdateHealthRPC", RpcTarget.AllBuffered, new object[] {maxHealth, maxHealth, true });
+                    photonView.RPC("UpdateHealthRPC", RpcTarget.AllBuffered, new object[] { maxHealth, maxHealth, true, false });
                     Hax2.Log1($"RPC 'UpdateHealthRPC' enviado para todos com saúde={currentHealth + maxHealth}, maxHealth={maxHealth}, effect=true.");
 
                     try
@@ -101,7 +101,7 @@ namespace r.e.p.o_cheat
                 var hurtMethod = healthType.GetMethod("Hurt", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (hurtMethod != null)
                 {
-                    hurtMethod.Invoke(playerHealthInstance, new object[] { damageAmount, true, -1 });
+                    hurtMethod.Invoke(playerHealthInstance, BuildArgs(hurtMethod, damageAmount, true, -1, false));
                     Hax2.Log1($"Método 'Hurt' chamado localmente com {damageAmount} de dano.");
                 }
                 else
@@ -115,7 +115,7 @@ namespace r.e.p.o_cheat
                     int maxHealth = maxHealthField != null ? (int)maxHealthField.GetValue(playerHealthInstance) : 100;
                     Hax2.Log1(maxHealthField != null ? $"maxHealth encontrado: {maxHealth}" : "Campo 'maxHealth' não encontrado, usando valor padrão: 100");
 
-                    photonView.RPC("HurtOtherRPC", RpcTarget.AllBuffered, new object[] { damageAmount, Vector3.zero, false, -1 });
+                    photonView.RPC("HurtOtherRPC", RpcTarget.AllBuffered, new object[] { damageAmount, Vector3.zero, false, -1, false });
                     Hax2.Log1($"RPC 'HurtOtherRPC' enviado com {damageAmount} de dano.");
 
                     try
@@ -157,23 +157,24 @@ namespace r.e.p.o_cheat
                         if (playerHealthField != null)
                         {
                             var playerHealthInstance = playerHealthField.GetValue(playerAvatarScriptInstance);
-                            var damageMethod = playerHealthInstance.GetType().GetMethod("UpdateHealthRPC");
-                            if (damageMethod != null)
+                            var healthType = playerHealthInstance.GetType();
+                            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+                            var maxHealthField = healthType.GetField("maxHealth", flags);
+                            int maxHealth = maxHealthField != null ? (int)maxHealthField.GetValue(playerHealthInstance) : 100;
+                            int newHealth = Hax2.infiniteHealthActive ? 999999 : maxHealth;
+
+                            // health is private now; set it directly so it works even if the RPC rejects a local call
+                            var healthField = healthType.GetField("health", flags);
+                            if (healthField != null) healthField.SetValue(playerHealthInstance, newHealth);
+                            else Hax2.Log1("Campo 'health' não encontrado em playerHealth.");
+
+                            var updateMethod = healthType.GetMethod("UpdateHealthRPC", flags);
+                            if (updateMethod != null)
                             {
-                                if (Hax2.infiniteHealthActive)
-                                {
-                                    damageMethod.Invoke(playerHealthInstance, new object[] { 999999, 100, true });
-                                }
-                                else if (!Hax2.infiniteHealthActive)
-                                {
-                                    damageMethod.Invoke(playerHealthInstance, new object[] { 100, 100, true });
-                                }
-                                Hax2.Log1("Vida máxima ajustada para 999999.");
+                                try { updateMethod.Invoke(playerHealthInstance, BuildArgs(updateMethod, newHealth, maxHealth, true, false)); }
+                                catch (Exception e) { Hax2.Log1($"UpdateHealthRPC local call failed: {(e.InnerException ?? e).Message}"); }
                             }
-                            else
-                            {
-                                Hax2.Log1("Método 'UpdateHealthRPC' não encontrado em playerHealth.");
-                            }
+                            Hax2.Log1($"Health set to {newHealth}/{maxHealth} (infinite: {Hax2.infiniteHealthActive}).");
                         }
                         else
                         {
@@ -194,6 +195,24 @@ namespace r.e.p.o_cheat
             {
                 Hax2.Log1("Tipo PlayerController não encontrado.");
             }
+        }
+
+        // Fills the leading parameters with the given values and the rest with defaults
+        // (e.g. the trailing PhotonMessageInfo), so calls survive signature changes.
+        internal static object[] BuildArgs(MethodInfo method, params object[] values)
+        {
+            var parameters = method.GetParameters();
+            var args = new object[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (i < values.Length) args[i] = values[i];
+                else
+                {
+                    var type = parameters[i].ParameterType;
+                    args[i] = type.IsValueType ? Activator.CreateInstance(type) : null;
+                }
+            }
+            return args;
         }
     }
 }

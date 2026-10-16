@@ -1,92 +1,56 @@
 ﻿using UnityEngine;
 using Photon.Pun;
-using System.Collections.Generic;
 
 public class ItemSpawner : MonoBehaviourPunCallbacks
 {
-    public static void SpawnItem(Vector3 position)
+    private static readonly System.Reflection.FieldInfo DollarValueOverrideField =
+        typeof(ValuableObject).GetField("dollarValueOverride", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+    // Same thresholds as ExtractionPoint.SpawnTaxReturn picks the bag size with
+    private static GameObject BagPrefabFor(int value)
     {
-        if (!PhotonNetwork.IsConnected)
+        var assets = AssetManager.instance;
+        if (value > 10000) return assets.surplusValuableBig;
+        if (value > 5000) return assets.surplusValuableMedium;
+        return assets.surplusValuableSmall;
+    }
+
+    // Spawns a money bag the way the game does (EnemySpinny.SpawnMoneyBag / ExtractionPoint.SpawnTaxReturn):
+    // the prefab is used untouched (adding/replacing Photon sync components broke its physics and scale),
+    // and the value goes through dollarValueOverride, which ValuableObject applies on its own setup.
+    public static void SpawnItem(Vector3 position, int value = 45000)
+    {
+        if (AssetManager.instance == null)
         {
-            Debug.Log("Offline mode: Spawning locally.");
-            var localItem = Object.Instantiate(AssetManager.instance.surplusValuableSmall, position, Quaternion.identity);
-            if (localItem != null)
-            {
-                EnsureItemVisibility(localItem);
-            }
+            Debug.LogError("AssetManager not ready, can't spawn money.");
             return;
         }
 
-        object[] instantiationData = new object[] { position.x, position.y, position.z };
-        var spawnedItem = PhotonNetwork.Instantiate("Valuables/" + AssetManager.instance.surplusValuableSmall.name, position, Quaternion.identity, 0, instantiationData);
-
-        if (spawnedItem != null)
+        GameObject prefab = BagPrefabFor(value);
+        GameObject bag;
+        if (!SemiFunc.IsMultiplayer())
         {
-            Debug.Log("Item spawned at: " + position);
-            ConfigureSyncComponents(spawnedItem);
+            bag = Object.Instantiate(prefab, position, Quaternion.identity);
+        }
+        else if (PhotonNetwork.IsMasterClient)
+        {
+            bag = PhotonNetwork.InstantiateRoomObject("Valuables/" + prefab.name, position, Quaternion.identity, 0);
         }
         else
         {
-            Debug.LogError("Item spawn failed!");
+            // Room objects can only be created by the host; the value override may be ignored by the host's copy
+            bag = PhotonNetwork.Instantiate("Valuables/" + prefab.name, position, Quaternion.identity, 0);
         }
-    }
 
-    private static void ConfigureSyncComponents(GameObject item)
-    {
-        PhotonView pv = item.GetComponent<PhotonView>();
-        if (pv == null)
+        if (bag == null)
         {
-            pv = item.AddComponent<PhotonView>();
-            pv.ViewID = PhotonNetwork.AllocateViewID(0);
-            Debug.Log("PhotonView adicionado ao item: " + pv.ViewID);
+            Debug.LogError("Money spawn failed!");
+            return;
         }
 
-        PhotonTransformView transformView = item.GetComponent<PhotonTransformView>();
-        if (transformView == null)
-        {
-            transformView = item.AddComponent<PhotonTransformView>();
-            Debug.Log("PhotonTransformView adicionado ao item");
-        }
-
-        Rigidbody rb = item.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            PhotonRigidbodyView rigidbodyView = item.GetComponent<PhotonRigidbodyView>();
-            if (rigidbodyView == null)
-            {
-                rigidbodyView = item.AddComponent<PhotonRigidbodyView>();
-                rigidbodyView.m_SynchronizeVelocity = true;
-                rigidbodyView.m_SynchronizeAngularVelocity = true;
-                Debug.Log("PhotonRigidbodyView adicionado e configurado no item");
-            }
-        }
-
-        if (item.GetComponent<ItemSync>() == null)
-        {
-            item.AddComponent<ItemSync>();
-        }
-
-        pv.ObservedComponents = new List<Component> { transformView };
-        if (rb != null)
-        {
-            PhotonRigidbodyView rigidbodyView = item.GetComponent<PhotonRigidbodyView>();
-            if (rigidbodyView != null)
-            {
-                pv.ObservedComponents.Add(rigidbodyView);
-            }
-        }
-        pv.Synchronization = ViewSynchronization.ReliableDeltaCompressed;
-
-        EnsureItemVisibility(item);
-    }
-
-    private static void EnsureItemVisibility(GameObject item)
-    {
-        item.SetActive(true);
-        foreach (var renderer in item.GetComponentsInChildren<Renderer>(true))
-        {
-            renderer.enabled = true;
-        }
-        item.layer = LayerMask.NameToLayer("Default");
+        // Must be set right after instantiation, before ValuableObject's own setup reads it
+        var valuable = bag.GetComponent<ValuableObject>();
+        if (valuable != null && DollarValueOverrideField != null) DollarValueOverrideField.SetValue(valuable, value);
+        Debug.Log($"Money bag ({prefab.name}) spawned at {position} with value {value}");
     }
 }

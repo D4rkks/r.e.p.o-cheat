@@ -37,7 +37,7 @@ namespace r.e.p.o_cheat
         {
             var playerControllerType = Type.GetType("PlayerController, Assembly-CSharp");
             if (playerControllerType == null) { Hax2.Log1("PlayerController type not found."); return; }
-            var playerControllerInstance = GameHelper.FindObjectOfType(playerControllerType);
+            var playerControllerInstance = global::PlayerController.instance != null ? (object)global::PlayerController.instance : null; // live instance; FindObjectOfType(includeInactive) could return a stale one
             if (playerControllerInstance == null) { Hax2.Log1("PlayerController instance not found."); return; }
             var playerAvatarScriptField = playerControllerType.GetField("playerAvatarScript", BindingFlags.Public | BindingFlags.Instance);
             if (playerAvatarScriptField == null) { Hax2.Log1("playerAvatarScript field not found in PlayerController."); return; }

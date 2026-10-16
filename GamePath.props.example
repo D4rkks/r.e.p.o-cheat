@@ -1,0 +1,6 @@
+<Project>
+  <!-- Copy this file to GamePath.props and point it to your REPO install (REPO_Data\Managed). GamePath.props is git-ignored. -->
+  <PropertyGroup>
+    <REPOManagedDir>C:\Program Files (x86)\Steam\steamapps\common\REPO\REPO_Data\Managed\</REPOManagedDir>
+  </PropertyGroup>
+</Project>
