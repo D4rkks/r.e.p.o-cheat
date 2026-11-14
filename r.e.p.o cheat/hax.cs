@@ -163,23 +163,40 @@ namespace r.e.p.o_cheat
 
     public class Hax2 : MonoBehaviour
     {
+        // === Static bridge fields cho features port từ Mai-xiyu ===
+        public static bool blindEnemies = false;
+        public static bool grabThroughWallsEnabled = false;
+        public static bool unlimitedBatteryActive = false;
+        public static UnlimitedBattery unlimitedBatteryComponent;
+        public static float tumbleLaunch = 1f;
+        public static float AdminUpgradeCap = 5f;
+        public static float AdminUpgradeCapMax = 10f;
+        public static float AdminUpgradeCapMin = 1f;
+        public static int selectedPlayerIndex = 0;
+        public static List<string> playerNames = new List<string>();
+        public static List<object> playerList = new List<object>();
+        public static float oldSliderValue = 0.5f;
+        public static bool spoofNameActive = false;
+        public static string persistentNameText = "";
+        public static float fieldOfView = 60f;
+
         private float nextUpdateTime = 0f;
         private const float updateInterval = 10f;
 
-        private int selectedPlayerIndex = 0;
-        private List<string> playerNames = new List<string>();
-        private List<object> playerList = new List<object>();
+        private int s_selectedPlayerIndex = 0;
+        private List<string> s_playerNames = new List<string>();
+        private List<object> s_playerList = new List<object>();
         private int selectedEnemyIndex = 0;
         private List<string> enemyNames = new List<string>();
         private List<Enemy> enemyList = new List<Enemy>();
-        private float oldSliderValue = 0.5f;
-        private float oldSliderValueStrength = 0.5f;
+        private float s_oldSliderValue = 0.5f;
+        public static float oldSliderValueStrength = 0.5f;
         public static float sliderValue = 0.5f;
         private static string moneyValueText = "45000";
         private static string itemValueText = "10000";
         public static float sliderValueStrength = 0.5f;
         public static float offsetESp = 0.5f;
-        private bool showMenu = true;
+        public static bool showMenu = true;
         public static bool godModeActive = false;
         public static bool infiniteHealthActive = false;
         public static bool stamineState = false;
@@ -192,7 +209,7 @@ namespace r.e.p.o_cheat
         private bool initialized = false;
         private static Dictionary<Color, Texture2D> solidTextures = new Dictionary<Color, Texture2D>();
 
-        private enum MenuCategory { Player, ESP, Combat, Misc, Enemies, Items, Spawner }
+        private enum MenuCategory { Player, ESP, Combat, Misc, Enemies, Items, Spawner, Mx }
         private MenuCategory currentCategory = MenuCategory.Player;
 
         public static float staminaRechargeDelay = 1f;
@@ -234,6 +251,7 @@ namespace r.e.p.o_cheat
 
         public void Start()
         {
+            MxRuntime.Init();
             menuStyle = new GUIStyle(GUI.skin.box)
             {
                 normal = { background = MakeSolidBackground(new Color(0.21f, 0.21f, 0.21f), 0.7f) },
@@ -296,10 +314,10 @@ namespace r.e.p.o_cheat
                 lastItemListUpdateTime = Time.time;
             }
 
-            if (oldSliderValue != sliderValue)
+            if (s_oldSliderValue != sliderValue)
             {
                 PlayerController.RemoveSpeed(sliderValue);
-                oldSliderValue = sliderValue;
+                s_oldSliderValue = sliderValue;
             }
 
             if (oldSliderValueStrength != sliderValueStrength)
@@ -612,37 +630,37 @@ namespace r.e.p.o_cheat
 
         private void UpdatePlayerList()
         {
-            var fakePlayers = playerNames.Where(name => name.Contains("FakePlayer")).ToList();
+            var fakePlayers = s_playerNames.Where(name => name.Contains("FakePlayer")).ToList();
             var fakePlayerCount = fakePlayers.Count;
 
-            playerNames.Clear();
-            playerList.Clear();
+            s_playerNames.Clear();
+            s_playerList.Clear();
 
             var players = SemiFunc.PlayerGetList();
             foreach (var player in players)
             {
-                playerList.Add(player);
+                s_playerList.Add(player);
                 string baseName = SemiFunc.PlayerGetName(player) ?? "Unknown Player";
                 bool isAlive = IsPlayerAlive(player, baseName);
                 string statusText = isAlive ? "<color=green>[LIVE]</color> " : "<color=red>[DEAD]</color> ";
-                playerNames.Add(statusText + baseName);
+                s_playerNames.Add(statusText + baseName);
             }
 
             for (int i = 0; i < fakePlayerCount; i++)
             {
-                playerNames.Add(fakePlayers[i]);
-                playerList.Add(null);
+                s_playerNames.Add(fakePlayers[i]);
+                s_playerList.Add(null);
             }
 
-            if (playerNames.Count == 0) playerNames.Add("No player Found");
+            if (s_playerNames.Count == 0) s_playerNames.Add("No player Found");
         }
 
         private void AddFakePlayer()
         {
-            int fakePlayerId = playerNames.Count(name => name.Contains("FakePlayer")) + 1;
+            int fakePlayerId = s_playerNames.Count(name => name.Contains("FakePlayer")) + 1;
             string fakeName = $"<color=green>[LIVE]</color> FakePlayer{fakePlayerId}";
-            playerNames.Add(fakeName);
-            playerList.Add(null);
+            s_playerNames.Add(fakeName);
+            s_playerList.Add(null);
             Log1($"Added fake player: {fakeName}");
         }
 
@@ -671,12 +689,12 @@ namespace r.e.p.o_cheat
 
         private void ReviveSelectedPlayer()
         {
-            if (selectedPlayerIndex < 0 || selectedPlayerIndex >= playerList.Count)
+            if (s_selectedPlayerIndex < 0 || s_selectedPlayerIndex >= s_playerList.Count)
             {
                 Log1("Índice de jogador inválido!");
                 return;
             }
-            var selectedPlayer = playerList[selectedPlayerIndex];
+            var selectedPlayer = s_playerList[s_selectedPlayerIndex];
             if (selectedPlayer == null)
             {
                 Log1("Jogador selecionado é nulo!");
@@ -691,7 +709,7 @@ namespace r.e.p.o_cheat
                 if (reviveMethod != null)
                 {
                     reviveMethod.Invoke(selectedPlayer, Health_Player.BuildArgs(reviveMethod, false));
-                    Log1("Revive called for: " + playerNames[selectedPlayerIndex]);
+                    Log1("Revive called for: " + s_playerNames[s_selectedPlayerIndex]);
                 }
                 else
                 {
@@ -719,7 +737,7 @@ namespace r.e.p.o_cheat
                         else
                         {
                             Log1("Campo 'health' não encontrado, tentando HealPlayer como fallback.");
-                            Health_Player.HealPlayer(selectedPlayer, maxHealth, playerNames[selectedPlayerIndex]);
+                            Health_Player.HealPlayer(selectedPlayer, maxHealth, s_playerNames[s_selectedPlayerIndex]);
                         }
 
                         int currentHealth = healthField != null ? (int)healthField.GetValue(playerHealthInstance) : -1;
@@ -737,18 +755,18 @@ namespace r.e.p.o_cheat
             }
             catch (Exception e)
             {
-                Log1($"Erro ao reviver e curar {playerNames[selectedPlayerIndex]}: {e.Message}");
+                Log1($"Erro ao reviver e curar {s_playerNames[s_selectedPlayerIndex]}: {e.Message}");
             }
         }
 
         private void KillSelectedPlayer()
         {
-            if (selectedPlayerIndex < 0 || selectedPlayerIndex >= playerList.Count) { Log1("Índice de jogador inválido!"); return; }
-            var selectedPlayer = playerList[selectedPlayerIndex];
+            if (s_selectedPlayerIndex < 0 || s_selectedPlayerIndex >= s_playerList.Count) { Log1("Índice de jogador inválido!"); return; }
+            var selectedPlayer = s_playerList[s_selectedPlayerIndex];
             if (selectedPlayer == null) { Log1("Jogador selecionado é nulo!"); return; }
             try
             {
-                Log1($"Tentando matar: {playerNames[selectedPlayerIndex]} | MasterClient: {PhotonNetwork.IsMasterClient}");
+                Log1($"Tentando matar: {s_playerNames[s_selectedPlayerIndex]} | MasterClient: {PhotonNetwork.IsMasterClient}");
                 var photonViewField = selectedPlayer.GetType().GetField("photonView", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (photonViewField == null) { Log1("PhotonViewField não encontrado!"); return; }
                 var photonView = photonViewField.GetValue(selectedPlayer) as PhotonView;
@@ -761,7 +779,7 @@ namespace r.e.p.o_cheat
                 var deathMethod = healthType.GetMethod("Death", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (deathMethod == null) { Log1("Método 'Death' não encontrado!"); return; }
                 deathMethod.Invoke(playerHealthInstance, null);
-                Log1($"Método 'Death' chamado localmente para {playerNames[selectedPlayerIndex]}.");
+                Log1($"Método 'Death' chamado localmente para {s_playerNames[s_selectedPlayerIndex]}.");
                 var playerAvatarField = healthType.GetField("playerAvatar", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (playerAvatarField != null)
                 {
@@ -770,7 +788,7 @@ namespace r.e.p.o_cheat
                     {
                         var playerAvatarType = playerAvatarInstance.GetType();
                         var playerDeathMethod = playerAvatarType.GetMethod("PlayerDeath", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                        if (playerDeathMethod != null) { playerDeathMethod.Invoke(playerAvatarInstance, new object[] { -1 }); Log1($"Método 'PlayerDeath' chamado localmente para {playerNames[selectedPlayerIndex]}."); }
+                        if (playerDeathMethod != null) { playerDeathMethod.Invoke(playerAvatarInstance, new object[] { -1 }); Log1($"Método 'PlayerDeath' chamado localmente para {s_playerNames[s_selectedPlayerIndex]}."); }
                         else Log1("Método 'PlayerDeath' não encontrado em PlayerAvatar!");
                     }
                     else Log1("Instância de PlayerAvatar é nula!");
@@ -789,19 +807,19 @@ namespace r.e.p.o_cheat
                     Log1("RPC 'HurtOtherRPC' enviado com 9999 de dano para garantir morte.");
                 }
                 else Log1("Não conectado ao Photon, morte apenas local.");
-                Log1($"Tentativa de matar {playerNames[selectedPlayerIndex]} concluída.");
+                Log1($"Tentativa de matar {s_playerNames[s_selectedPlayerIndex]} concluída.");
             }
-            catch (Exception e) { Log1($"Erro ao tentar matar {playerNames[selectedPlayerIndex]}: {e.Message}"); }
+            catch (Exception e) { Log1($"Erro ao tentar matar {s_playerNames[s_selectedPlayerIndex]}: {e.Message}"); }
         }
 
         private void SendSelectedPlayerToVoid()
         {
-            if (selectedPlayerIndex < 0 || selectedPlayerIndex >= playerList.Count)
+            if (s_selectedPlayerIndex < 0 || s_selectedPlayerIndex >= s_playerList.Count)
             {
                 Log1("Índice de jogador inválido!");
                 return;
             }
-            var selectedPlayer = playerList[selectedPlayerIndex];
+            var selectedPlayer = s_playerList[s_selectedPlayerIndex];
             if (selectedPlayer == null)
             {
                 Log1("Jogador selecionado é nulo!");
@@ -810,7 +828,7 @@ namespace r.e.p.o_cheat
 
             try
             {
-                Log1($"Tentando enviar {playerNames[selectedPlayerIndex]} para o void | MasterClient: {PhotonNetwork.IsMasterClient}");
+                Log1($"Tentando enviar {s_playerNames[s_selectedPlayerIndex]} para o void | MasterClient: {PhotonNetwork.IsMasterClient}");
 
                 var photonViewField = selectedPlayer.GetType().GetField("photonView", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (photonViewField == null)
@@ -841,7 +859,7 @@ namespace r.e.p.o_cheat
 
                 Vector3 voidPosition = new Vector3(0, -10, 0);
                 transform.position = voidPosition;
-                Log1($"Jogador {playerNames[selectedPlayerIndex]} enviado localmente para o void: {voidPosition}");
+                Log1($"Jogador {s_playerNames[s_selectedPlayerIndex]} enviado localmente para o void: {voidPosition}");
 
                 if (PhotonNetwork.IsConnected && photonView != null)
                 {
@@ -855,7 +873,7 @@ namespace r.e.p.o_cheat
             }
             catch (Exception e)
             {
-                Log1($"Erro ao enviar {playerNames[selectedPlayerIndex]} para o void: {e.Message}");
+                Log1($"Erro ao enviar {s_playerNames[s_selectedPlayerIndex]} para o void: {e.Message}");
             }
         }
 
@@ -938,6 +956,8 @@ namespace r.e.p.o_cheat
                     currentCategory = MenuCategory.Items;
                 if (GUI.Button(new Rect(startX + 6 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Spawner", currentCategory == MenuCategory.Spawner ? selectedTabStyle : tabStyle))
                     currentCategory = MenuCategory.Spawner;
+                if (GUI.Button(new Rect(startX + 7 * (tabWidth + spacing), menuY + 30, tabWidth, tabHeight), "Mx", currentCategory == MenuCategory.Mx ? selectedTabStyle : tabStyle))
+                    currentCategory = MenuCategory.Mx;
 
                 GUIStyle instructionStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = Color.white } };
                 GUI.Label(new Rect(menuX + 10, menuY + 75, 580, 20), "Press F5 to reload! Press DEL to close! Press F10 to unload!", instructionStyle);
@@ -946,22 +966,22 @@ namespace r.e.p.o_cheat
                     case MenuCategory.Player:
                         UpdatePlayerList();
                         UIHelper.Label("Select a player:", menuX + 30, menuY + 95);
-                        playerScrollPosition = GUI.BeginScrollView(new Rect(menuX + 30, menuY + 115, 540, 150), playerScrollPosition, new Rect(0, 0, 520, playerNames.Count * 35), false, true);
-                        for (int i = 0; i < playerNames.Count; i++)
+                        playerScrollPosition = GUI.BeginScrollView(new Rect(menuX + 30, menuY + 115, 540, 150), playerScrollPosition, new Rect(0, 0, 520, s_playerNames.Count * 35), false, true);
+                        for (int i = 0; i < s_playerNames.Count; i++)
                         {
-                            if (i == selectedPlayerIndex) GUI.color = Color.white;
+                            if (i == s_selectedPlayerIndex) GUI.color = Color.white;
                             else GUI.color = Color.gray;
-                            if (GUI.Button(new Rect(0, i * 35, 520, 30), playerNames[i])) selectedPlayerIndex = i;
+                            if (GUI.Button(new Rect(0, i * 35, 520, 30), s_playerNames[i])) s_selectedPlayerIndex = i;
                             GUI.color = Color.white;
                         }
                         GUI.EndScrollView();
 
                         if (UIHelper.Button("Heal Player", menuX + 30, menuY + 275))
                         {
-                            if (selectedPlayerIndex >= 0 && selectedPlayerIndex < playerList.Count)
+                            if (s_selectedPlayerIndex >= 0 && s_selectedPlayerIndex < s_playerList.Count)
                             {
-                                Health_Player.HealPlayer(playerList[selectedPlayerIndex], 50, playerNames[selectedPlayerIndex]);
-                                Hax2.Log1($"Player {playerNames[selectedPlayerIndex]} healed.");
+                                Health_Player.HealPlayer(s_playerList[s_selectedPlayerIndex], 50, s_playerNames[s_selectedPlayerIndex]);
+                                Hax2.Log1($"Player {s_playerNames[s_selectedPlayerIndex]} healed.");
                             }
                             else
                             {
@@ -970,10 +990,10 @@ namespace r.e.p.o_cheat
                         }
                         if (UIHelper.Button("Damage Player", menuX + 30, menuY + 315))
                         {
-                            if (selectedPlayerIndex >= 0 && selectedPlayerIndex < playerList.Count)
+                            if (s_selectedPlayerIndex >= 0 && s_selectedPlayerIndex < s_playerList.Count)
                             {
-                                Health_Player.DamagePlayer(playerList[selectedPlayerIndex], 1, playerNames[selectedPlayerIndex]);
-                                Hax2.Log1($"Player {playerNames[selectedPlayerIndex]} damaged.");
+                                Health_Player.DamagePlayer(s_playerList[s_selectedPlayerIndex], 1, s_playerNames[s_selectedPlayerIndex]);
+                                Hax2.Log1($"Player {s_playerNames[s_selectedPlayerIndex]} damaged.");
                             }
                             else
                             {
@@ -991,7 +1011,7 @@ namespace r.e.p.o_cheat
                         if (newNoclipActive != NoclipController.noclipActive) { NoclipController.ToggleNoclip(); NoclipController.noclipActive = newNoclipActive; }
 
                         UIHelper.Label("Speed Value " + sliderValue, menuX + 30, menuY + 515);
-                        oldSliderValue = sliderValue;
+                        s_oldSliderValue = sliderValue;
                         sliderValue = UIHelper.Slider(sliderValue, 1f, 30f, menuX + 30, menuY + 535);
 
                         UIHelper.Label("Strength Value: " + sliderValueStrength, menuX + 30, menuY + 555);
@@ -1059,21 +1079,21 @@ namespace r.e.p.o_cheat
                         UpdatePlayerList();
                         UIHelper.Label("Select a player:", menuX + 30, menuY + 95);
 
-                        playerScrollPosition = GUI.BeginScrollView(new Rect(menuX + 30, menuY + 115, 540, 200), playerScrollPosition, new Rect(0, 0, 520, playerNames.Count * 35), false, true);
-                        for (int i = 0; i < playerNames.Count; i++)
+                        playerScrollPosition = GUI.BeginScrollView(new Rect(menuX + 30, menuY + 115, 540, 200), playerScrollPosition, new Rect(0, 0, 520, s_playerNames.Count * 35), false, true);
+                        for (int i = 0; i < s_playerNames.Count; i++)
                         {
-                            if (i == selectedPlayerIndex) GUI.color = Color.white;
+                            if (i == s_selectedPlayerIndex) GUI.color = Color.white;
                             else GUI.color = Color.gray;
-                            if (GUI.Button(new Rect(0, i * 35, 520, 30), playerNames[i])) selectedPlayerIndex = i;
+                            if (GUI.Button(new Rect(0, i * 35, 520, 30), s_playerNames[i])) s_selectedPlayerIndex = i;
                             GUI.color = Color.white;
                         }
                         GUI.EndScrollView();
 
-                        if (UIHelper.Button("Revive", menuX + 30, menuY + 330)) { ReviveSelectedPlayer(); Hax2.Log1("Player revived: " + playerNames[selectedPlayerIndex]); }
+                        if (UIHelper.Button("Revive", menuX + 30, menuY + 330)) { ReviveSelectedPlayer(); Hax2.Log1("Player revived: " + s_playerNames[s_selectedPlayerIndex]); }
                         if (UIHelper.Button("Kill Selected Player", menuX + 30, menuY + 370)) { KillSelectedPlayer(); Hax2.Log1("Tentativa de matar o jogador selecionado realizada."); }
                         if (UIHelper.Button("Send Player To Void", menuX + 30, menuY + 410)) SendSelectedPlayerToVoid();
-                        if (UIHelper.Button("Teleport Player To Me", menuX + 30, menuY + 450)) { Teleport.TeleportPlayerToMe(selectedPlayerIndex, playerList, playerNames); }
-                        if (UIHelper.Button("Teleport Me To Player", menuX + 30, menuY + 490)) { Teleport.TeleportMeToPlayer(selectedPlayerIndex, playerList, playerNames); }
+                        if (UIHelper.Button("Teleport Player To Me", menuX + 30, menuY + 450)) { Teleport.TeleportPlayerToMe(s_selectedPlayerIndex, s_playerList, s_playerNames); }
+                        if (UIHelper.Button("Teleport Me To Player", menuX + 30, menuY + 490)) { Teleport.TeleportMeToPlayer(s_selectedPlayerIndex, s_playerList, s_playerNames); }
                         break;
 
                     case MenuCategory.Misc:
@@ -1267,6 +1287,9 @@ namespace r.e.p.o_cheat
                         }
                         ExtractionZone.DrawMenu(menuX + 30, menuY + 490);
                         break;
+                    case MenuCategory.Mx:
+                        MxMenu(menuX, menuY);
+                        break;
                 }
             }
 
@@ -1280,6 +1303,85 @@ namespace r.e.p.o_cheat
                     if (!string.IsNullOrEmpty(logMessage.message)) UIHelper.DebugLabel(logMessage.message);
                 }
             }
+        }
+
+        private Vector2 mxScroll;
+
+        private void MxMenu(float menuX, float menuY)
+        {
+            mxScroll = GUI.BeginScrollView(new Rect(menuX + 30, menuY + 95, 540, 500), mxScroll, new Rect(0, 0, 500, 980), false, true);
+            float y = 0; float x = 10;
+
+            GUI.Label(new Rect(x, y, 480, 24), "== Combat & Visuals (Mai-xiyu) ==");
+            y += 28;
+            Aimbot.isEnabled = UIHelper.Checkbox("Aimbot", Aimbot.isEnabled, menuX + x, menuY + y); y += 30;
+            Aimbot.smoothness = UIHelper.Slider(Aimbot.smoothness, 1f, 20f, menuX + x, menuY + y); GUI.Label(new Rect(x + 220, y, 260, 24), "Smooth: " + Aimbot.smoothness.ToString("F1")); y += 30;
+            BulletTrack.Enabled = UIHelper.Checkbox("Bullet Track (host/solo)", BulletTrack.Enabled, menuX + x, menuY + y); y += 30;
+            AutoDodge.isAutoDodgeEnabled = UIHelper.Checkbox("Auto Dodge", AutoDodge.isAutoDodgeEnabled, menuX + x, menuY + y); y += 34;
+            MiniRadar.isRadarEnabled = UIHelper.Checkbox("Mini Radar", MiniRadar.isRadarEnabled, menuX + x, menuY + y); y += 30;
+            SkeletonESP.enabled = UIHelper.Checkbox("Skeleton ESP", SkeletonESP.enabled, menuX + x, menuY + y); y += 30;
+            MaiDebugCheats.drawEspBool = UIHelper.Checkbox("ESP Overlay (Mai)", MaiDebugCheats.drawEspBool, menuX + x, menuY + y); y += 30;
+            if (UIHelper.Button("3rd Person: " + (ThirdPersonCamera.isEnabled ? "ON" : "OFF"), menuX + x, menuY + y, 240, 28))
+            { if (ThirdPersonCamera.isEnabled) ThirdPersonCamera.Disable(); else ThirdPersonCamera.Enable(); }
+            y += 34;
+
+            GUI.Label(new Rect(x, y, 480, 24), "== Auto & Items ==");
+            y += 28;
+            AutoPickup.isAutoPickupEnabled = UIHelper.Checkbox("Auto Pickup", AutoPickup.isAutoPickupEnabled, menuX + x, menuY + y); y += 30;
+            AutoPickup.isAutoSellEnabled = UIHelper.Checkbox("Auto Sell", AutoPickup.isAutoSellEnabled, menuX + x, menuY + y); y += 30;
+            GUI.Label(new Rect(x + 260, y, 240, 24), AutoPickup.SellStatus);
+            AutoPickup.pickupRadius = UIHelper.Slider(AutoPickup.pickupRadius, 5f, 100f, menuX + x, menuY + y); GUI.Label(new Rect(x + 220, y, 260, 24), "Radius: " + AutoPickup.pickupRadius.ToString("F0")); y += 30;
+            if (UIHelper.Button("AutoPilot: " + (AutoPilot.isActive ? "STOP" : "START"), menuX + x, menuY + y, 240, 28)) AutoPilot.Toggle();
+            GUI.Label(new Rect(x + 260, y, 240, 24), AutoPilot.statusText); y += 34;
+            HaulAssistant.HudEnabled = UIHelper.Checkbox("Haul Assistant HUD", HaulAssistant.HudEnabled, menuX + x, menuY + y); y += 30;
+            if (UIHelper.Button("Duplicate Held Item", menuX + x, menuY + y, 240, 28)) ItemDuplicator.DuplicateHeldItem();
+            y += 34;
+
+            GUI.Label(new Rect(x, y, 480, 24), "== Self & Movement ==");
+            y += 28;
+            if (UIHelper.Button("Creative Mode: " + (CreativeMode.isCreativeMode ? "ON" : "OFF"), menuX + x, menuY + y, 240, 28)) CreativeMode.ToggleCreativeMode();
+            y += 34;
+            if (UIHelper.Button("Revive Self", menuX + x, menuY + y, 240, 28)) Players.ReviveSelf();
+            if (UIHelper.Button("Max All Upgrades", menuX + x + 250, menuY + y, 240, 28)) UpgradeHelper.MaxAllUpgrades();
+            y += 34;
+            if (UIHelper.Button("Inflate All Items ($99999)", menuX + x, menuY + y, 240, 28)) ItemInflater.InflateAll();
+            if (UIHelper.Button("x10 All Items", menuX + x + 250, menuY + y, 240, 28)) ItemInflater.MultiplyAll();
+            y += 34;
+            if (UIHelper.Button("Zero Haul Goal", menuX + x, menuY + y, 240, 28)) HaulGoalZero.ZeroHaulGoal();
+            y += 34;
+            Hax2.unlimitedBatteryActive = UIHelper.Checkbox("Unlimited Battery", Hax2.unlimitedBatteryActive, menuX + x, menuY + y); y += 30;
+            NativeGameApi.FeatherFall = UIHelper.Checkbox("Feather Fall", NativeGameApi.FeatherFall, menuX + x, menuY + y); y += 30;
+            NativeGameApi.NoDeathPit = UIHelper.Checkbox("No Death Pit", NativeGameApi.NoDeathPit, menuX + x, menuY + y); y += 34;
+
+            GUI.Label(new Rect(x, y, 480, 24), "== Enemies & World ==");
+            y += 28;
+            Hax2.blindEnemies = UIHelper.Checkbox("Blind Enemies", Hax2.blindEnemies, menuX + x, menuY + y); y += 30;
+            if (UIHelper.Button("Freeze All Enemies", menuX + x, menuY + y, 240, 28)) Enemies.FreezeAllEnemies();
+            if (UIHelper.Button("Unfreeze All", menuX + x + 250, menuY + y, 240, 28)) Enemies.UnfreezeAllEnemies();
+            y += 34;
+            if (UIHelper.Button("Kill All Enemies", menuX + x, menuY + y, 240, 28)) Enemies.KillAllEnemies();
+            if (UIHelper.Button("Despawn All", menuX + x + 250, menuY + y, 240, 28)) NativeGameApi.DespawnAllEnemies();
+            y += 34;
+            if (UIHelper.Button("Shop: Free Items", menuX + x, menuY + y, 240, 28)) ShopHack.SetAllShopItemsFree();
+            if (UIHelper.Button("Shop: +$10k", menuX + x + 250, menuY + y, 240, 28)) ShopHack.AddMoney(10000);
+            y += 34;
+            if (UIHelper.Button("Complete Level", menuX + x, menuY + y, 240, 28)) LevelAdjust.CompleteLevel();
+            if (UIHelper.Button("Go Shop", menuX + x + 250, menuY + y, 240, 28)) LevelAdjust.GoShop();
+            y += 34;
+            if (UIHelper.Button("Go Lobby", menuX + x, menuY + y, 240, 28)) LevelAdjust.GoLobby();
+            if (UIHelper.Button("Reveal Map", menuX + x + 250, menuY + y, 240, 28)) NativeGameApi.RevealMap();
+            y += 34;
+            if (UIHelper.Button("Request Extraction", menuX + x, menuY + y, 240, 28)) NativeGameApi.RequestActivateExtraction();
+            if (UIHelper.Button("Charge Held Item", menuX + x + 250, menuY + y, 240, 28)) NativeGameApi.ChargeHeldItem();
+            y += 34;
+            if (UIHelper.Button("Waypoint: Save Here", menuX + x, menuY + y, 240, 28)) TeleportPlus.SaveCurrentPosition();
+            if (UIHelper.Button("Waypoint: Go", menuX + x + 250, menuY + y, 240, 28)) TeleportPlus.TeleportToWaypoint(TeleportPlus.selectedWaypointIndex);
+            y += 34;
+            if (UIHelper.Button("Teleport to Crosshair", menuX + x, menuY + y, 240, 28)) TeleportPlus.TeleportToCrosshair();
+            if (UIHelper.Button("Teleport Random", menuX + x + 250, menuY + y, 240, 28)) TeleportPlus.TeleportRandom();
+            y += 34;
+
+            GUI.EndScrollView();
         }
 
         private static Texture2D MakeSolidBackground(Color color, float alpha)//fix
