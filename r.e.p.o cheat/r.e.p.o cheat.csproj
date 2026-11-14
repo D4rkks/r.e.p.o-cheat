@@ -12,6 +12,8 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <!-- Game install: override REPOManagedDir in ..\GamePath.props (git-ignored, see GamePath.props.example) or with /p:REPOManagedDir=... -->
@@ -50,7 +52,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
@@ -60,10 +61,12 @@
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
+        <Reference Include="0Harmony">
+      <HintPath>libs\0Harmony.dll</HintPath>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(REPOManagedDir)Assembly-CSharp.dll</HintPath>
     </Reference>
@@ -395,6 +398,57 @@
     <Reference Include="websocket-sharp">
       <HintPath>$(REPOManagedDir)websocket-sharp.dll</HintPath>
     </Reference>
+      <Compile Include="Maixiyu\Utils\DLog.cs" />
+    <Compile Include="Maixiyu\Utils\DelayedPhysicsReset.cs" />
+    <Compile Include="Maixiyu\Utils\FeatureHealth.cs" />
+    <Compile Include="Maixiyu\Utils\FeatureHelpers.cs" />
+    <Compile Include="Maixiyu\Utils\GameHelper.cs" />
+    <Compile Include="Maixiyu\Utils\GlobalAliases.cs" />
+    <Compile Include="Maixiyu\Utils\HaulComboSolver.cs" />
+    <Compile Include="Maixiyu\Utils\ReflectionHelper.cs" />
+    <Compile Include="Maixiyu\Utils\Reflector.cs" />
+    <Compile Include="Maixiyu\Utils\SceneCache.cs" />
+    <Compile Include="Maixiyu\Combat\Aimbot.cs" />
+    <Compile Include="Maixiyu\Combat\AutoDodge.cs" />
+    <Compile Include="Maixiyu\Combat\BulletTrack.cs" />
+    <Compile Include="Maixiyu\Visuals\ESPEnhancements.cs" />
+    <Compile Include="Maixiyu\Visuals\EspOverlay.cs" />
+    <Compile Include="Maixiyu\Visuals\FOVEditor.cs" />
+    <Compile Include="Maixiyu\Visuals\MaterialPreserver.cs" />
+    <Compile Include="Maixiyu\Visuals\MiniRadar.cs" />
+    <Compile Include="Maixiyu\Visuals\MiscFeatures.cs" />
+    <Compile Include="Maixiyu\Visuals\SkeletonESP.cs" />
+    <Compile Include="Maixiyu\Visuals\ThirdPersonCamera.cs" />
+    <Compile Include="Maixiyu\Items\AutoPickup.cs" />
+    <Compile Include="Maixiyu\Items\AutoPilot.cs" />
+    <Compile Include="Maixiyu\Items\HaulAssistant.cs" />
+    <Compile Include="Maixiyu\Player\BatteryKeepAlive.cs" />
+    <Compile Include="Maixiyu\Player\CreativeMode.cs" />
+    <Compile Include="Maixiyu\Player\Players.cs" />
+    <Compile Include="Maixiyu\Player\UnlimitedBattery.cs" />
+    <Compile Include="Maixiyu\World\DeathPitPatch.cs" />
+    <Compile Include="Maixiyu\World\Enemies.cs" />
+    <Compile Include="Maixiyu\World\LevelAdjust.cs" />
+    <Compile Include="Maixiyu\World\NativeGameApi.cs" />
+    <Compile Include="Maixiyu\World\ShopHack.cs" />
+    <Compile Include="Maixiyu\World\TeleportPlus.cs" />
+    <Compile Include="Maixiyu\Stubs\LangStub.cs" />
+      <Compile Include="Maixiyu\Items\ItemTeleport.cs" />
+    <Compile Include="Maixiyu\Items\ItemTeleportComponent.cs" />
+    <Compile Include="Maixiyu\Player\PlayerController.cs" />
+    <Compile Include="Maixiyu\Player\PlayerReflectionCache.cs" />
+    <Compile Include="Maixiyu\World\DebugCheats.cs" />
+    <Compile Include="Maixiyu\Patches\MaiPatches.cs" />
+    <Compile Include="Maixiyu\Items\MaiItemSpawner.cs" />
+    <Compile Include="Maixiyu\Items\MaiItemSync.cs" />
+    <Compile Include="Maixiyu\Stubs\ConfigManagerStub.cs" />
+    <Compile Include="Maixiyu\Stubs\PortStubs.cs" />
+      <Compile Include="Maixiyu\CosmeticFeatures.cs" />
+    <Compile Include="Maixiyu\Network\Troll.cs" />
+    <Compile Include="Maixiyu\Network\ShadowHostMode.cs" />
+      <Compile Include="Maixiyu\Network\ForceHost.cs" />
+      <Compile Include="Maixiyu\Network\AntiKick.cs" />
+    <Compile Include="Maixiyu\MxRuntime.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Cheats\CrashLobby.cs" />
@@ -408,7 +462,6 @@
     <Compile Include="Cheats\ItemSync.cs" />
     <Compile Include="Cheats\PlayerCheatSync.cs" />
     <Compile Include="Cheats\DebugCheats.cs" />
-    <Compile Include="Cheats\GameHelper.cs" />
     <Compile Include="Cheats\Health_Player.cs" />
     <Compile Include="Cheats\playerColor.cs" />
     <Compile Include="Cheats\PlayerController.cs" />
@@ -421,9 +474,10 @@
     <Compile Include="main.cs" />
     <Compile Include="hax.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+
   </ItemGroup>
   <ItemGroup>
     <None Include="Cheats\ChamsShader.shader" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-</Project>
+</Project>
